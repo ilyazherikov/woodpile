@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Line Pattern Tool</title>
+
+  <!-- ====================== Styles ====================== -->
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Split layout, full viewport height */
+    #app {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+    }
+
+    /* Left: fixed-width control panel */
+    #panel {
+      width: 260px;
+      flex: 0 0 260px;
+      background: #ffffff;
+      border-right: 1px solid #ddd;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    /* Right: canvas host fills remaining width */
+    #canvas-host {
+      flex: 1 1 auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #panel #logo {
+      display: block;
+      width: 100%;   /* matches the full-width "Upload font" button */
+      height: auto;
+      margin: 0 0 20px;
+    }
+
+    /* Section divider (e.g. Physics) */
+    .section {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid #eee;
+    }
+    .section h2 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 16px;
+      color: #070707;
+    }
+
+    .control { margin-bottom: 22px; }
+    .control label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .control .value {
+      font-weight: 400;
+      color: #888;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    input[type="range"] { width: 100%; }
+
+    /* "Save settings" checkbox row */
+    .checkbox-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+    }
+    .checkbox-control input { cursor: pointer; }
+
+    /* Native color pickers, sized to match the other controls */
+    input[type="color"] {
+      width: 100%;
+      height: 36px;
+      padding: 2px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    /* Swap-colors button, centered between the two color pickers */
+    .swap-btn {
+      display: block;
+      margin: -8px auto 14px;
+      width: 36px;
+      height: 28px;
+      padding: 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      color: #070707;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .swap-btn:hover { background: #f2f2f2; }
+
+    /* Action buttons */
+    .action {
+      width: 100%;
+      padding: 10px 0;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 10px;
+      border: 1px solid #070707;
+      background: #070707;
+      color: #fff;
+    }
+    .action.secondary {
+      background: #fff;
+      color: #070707;
+    }
+
+    /* Upload error message */
+    .error {
+      color: #c0392b;
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* Disabled state for any control */
+    button:disabled,
+    input:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Transparent text-input overlay sitting on top of the p5 canvas.
+       The text itself is invisible (p5 draws the glyphs); only the
+       caret is visible so the user can see where they're typing. */
+    #text-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 80px;
+      margin: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: transparent;
+      caret-color: #070707;
+      font-family: 'UploadedFont', sans-serif;
+      font-size: 150px;
+      line-height: 1.2;
+      resize: none;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      z-index: 2;
+    }
+    #text-input::selection { background: rgba(7, 7, 7, 0.12); }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <!-- ====================== Control panel ====================== -->
+    <aside id="panel">
+      <img id="logo" src="woodpilelogo.svg" alt="Woodpile" />
+
+      <!-- Tier 0: always active -->
+      <div class="control">
+        <button class="action" id="upload-btn">Upload font</button>
+        <input type="file" id="font-input" accept=".otf,.ttf" hidden />
+        <div class="error" id="font-error" hidden></div>
+      </div>
+
+      <!-- Tier 1: active after a font is loaded -->
+      <div class="control">
+        <label>Font size <span class="value" id="fontSize-val">150px</span></label>
+        <input type="range" id="fontSize" min="72" max="360" step="1" value="150" disabled />
+      </div>
+
+      <div class="control">
+        <label>Line height <span class="value" id="lineHeight-val">120%</span></label>
+        <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled />
+      </div>
+
+      <!-- Tier 1: colors (active once a font is loaded) -->
+      <div class="control">
+        <label>Background <span class="value" id="bg-color-val">#F5F5F5</span></label>
+        <input type="color" id="bg-color" value="#F5F5F5" disabled />
+      </div>
+
+      <!-- Tier 0: swap background/pattern colors (always active) -->
+      <button type="button" class="swap-btn" id="swap-colors"
+              title="Swap colors" aria-label="Swap colors">&#x21c5;</button>
+
+      <div class="control">
+        <label>Pattern <span class="value" id="pattern-color-val">#070707</span></label>
+        <input type="color" id="pattern-color" value="#070707" disabled />
+      </div>
+
+      <!-- Variable-font axis sliders are injected here at load time -->
+      <div id="axes-container"></div>
+
+      <div class="control">
+        <label>Line thickness <span class="value" id="thickness-val">3px</span></label>
+        <input type="range" id="thickness" min="1" max="20" value="3" disabled />
+      </div>
+
+      <div class="control">
+        <label>Gap <span class="value" id="gap-val">3px</span></label>
+        <input type="range" id="gap" min="0" max="10" value="3" disabled />
+      </div>
+
+      <!-- Angle (0 = horizontal, 90 = vertical) -->
+      <div class="control">
+        <label>Angle <span class="value" id="angle-val">0°</span></label>
+        <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled />
+      </div>
+
+      <button class="action" id="expand-btn" disabled>Expand</button>
+      <button class="action secondary" id="clear-btn">Clear Canvas</button>
+
+      <!-- Tier 0: keep current settings across Clear (always active) -->
+      <label class="checkbox-control">
+        <input type="checkbox" id="save-settings" /> Save settings
+      </label>
+
+      <!-- ============ Physics section (Tier 2) ============ -->
+      <!-- All controls disabled until Expand starts the engine. -->
+      <div class="section">
+        <h2>Physics</h2>
+
+        <div class="control">
+          <label>Air resistance <span class="value" id="frictionAir-val">0.40</span></label>
+          <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled />
+        </div>
+
+        <div class="control">
+          <label>Bounciness <span class="value" id="restitution-val">0.3</span></label>
+          <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled />
+        </div>
+
+        <div class="control">
+          <label>Surface friction <span class="value" id="friction-val">0.1</span></label>
+          <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled />
+        </div>
+
+        <div class="control">
+          <label>Cursor force <span class="value" id="mouseForceScale-val">0.2</span></label>
+          <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled />
+        </div>
+
+        <div class="control">
+          <label>Spin <span class="value" id="spin-val">0.80</span></label>
+          <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled />
+        </div>
+
+        <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
+        <button class="action secondary" id="export-btn" disabled>Export as SVG</button>
+      </div>
+    </aside>
+
+    <!-- ====================== Canvas host ====================== -->
+    <div id="canvas-host">
+      <textarea id="text-input" spellcheck="false" autocomplete="off" hidden></textarea>
+    </div>
+  </div>
+
+  <!-- ====================== CDN libraries ====================== -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+
+  <!-- ====================== App (ES module) ====================== -->
+  <script type="module">
+    import {
+      initPhysics,
+      updatePhysics,
+      applyMouseForce,
+      getBodies,
+      destroyPhysics,
+      setBodyProperty,
+    } from './physics.js';
+
+    // fontkit (ESM, browser-ready): parses fonts, shapes text, and —
+    // crucially — produces variation-applied glyph outlines.
+    import * as fontkitNS from 'https://esm.sh/fontkit@2';
+    const fontkit = fontkitNS.default || fontkitNS;
+
+    // ---------------- Constants ----------------
+    const MARGIN = 80; // padding around the text block, all sides
+    const CURVE_STEPS = 8; // bezier flattening resolution
+    const PLACEHOLDER =
+      "Wait for the tea, the fish aren't running!\n(Please upload the font file)";
+
+    // ---------------- App state ----------------
+    const state = {
+      fontSize: 150,
+      lineHeightPct: 120, // line height as a percentage of font size
+      thickness: 3,
+      gap: 3,
+      angle: 0,          // pattern rotation in degrees (0 = horizontal)
+      axes: {},          // { axisTag: value } for variable fonts
+      expanded: false,
+    };
+
+    // Display colors (live-editable via the color pickers). The pattern
+    // color is display-only — applied as the fill for both the static
+    // strokes and the active Matter.js bodies, never a physics property.
+    let bgColor = '#F5F5F5';
+    let patternColor = '#070707';
+
+    // Loaded font + derived render data.
+    let font = null;            // base fontkit Font
+    let fontInstance = null;    // variation-applied instance (or base font)
+    let fontFaceUrl = null;     // blob URL backing the @font-face
+    let currentLines = [];      // [{x,y,w,h,angle}] glyph-clipped strokes
+
+    // Physics config — single source of truth for all tuning.
+    const physicsConfig = {
+      frictionAir: 0.4,
+      restitution: 0.3,
+      friction: 0.1,
+      mouseForceScale: 0.2,
+      spin: 0.8,
+    };
+
+    // Slider id -> { default, decimals } for the physics controls.
+    const PHYSICS_DEFAULTS = {
+      frictionAir: { value: 0.4, decimals: 2 },
+      restitution: { value: 0.3, decimals: 1 },
+      friction: { value: 0.1, decimals: 1 },
+      mouseForceScale: { value: 0.2, decimals: 1 },
+      spin: { value: 0.8, decimals: 2 },
+    };
+
+    // =========================================================
+    // Geometry helpers
+    // =========================================================
+
+    // Sample a point on a cubic / quadratic bezier at parameter t.
+    function cubicPt(x0, y0, x1, y1, x2, y2, x3, y3, t) {
+      const mt = 1 - t;
+      const a = mt * mt * mt, b = 3 * mt * mt * t, c = 3 * mt * t * t, d = t * t * t;
+      return { x: a * x0 + b * x1 + c * x2 + d * x3, y: a * y0 + b * y1 + c * y2 + d * y3 };
+    }
+    function quadPt(x0, y0, x1, y1, x2, y2, t) {
+      const mt = 1 - t;
+      const a = mt * mt, b = 2 * mt * t, c = t * t;
+      return { x: a * x0 + b * x1 + c * x2, y: a * y0 + b * y1 + c * y2 };
+    }
+
+    // Flatten a fontkit glyph Path into closed polygons (appended to
+    // `out`), mapping every point through `tf` (font units -> canvas px,
+    // including the baseline y-flip). Curves are sampled into segments.
+    // Interpolating in canvas space is valid because `tf` is affine.
+    function pushGlyphPolygons(path, tf, out) {
+      let cur = null;
+      let cx = 0, cy = 0; // current point, already in canvas space
+      for (const c of path.commands) {
+        const a = c.args;
+        if (c.command === 'moveTo') {
+          if (cur && cur.length) out.push(cur);
+          const p = tf(a[0], a[1]);
+          cur = [p]; cx = p.x; cy = p.y;
+        } else if (c.command === 'lineTo') {
+          const p = tf(a[0], a[1]);
+          cur.push(p); cx = p.x; cy = p.y;
+        } else if (c.command === 'quadraticCurveTo') {
+          const cp = tf(a[0], a[1]);
+          const p = tf(a[2], a[3]);
+          for (let i = 1; i <= CURVE_STEPS; i++) {
+            cur.push(quadPt(cx, cy, cp.x, cp.y, p.x, p.y, i / CURVE_STEPS));
+          }
+          cx = p.x; cy = p.y;
+        } else if (c.command === 'bezierCurveTo') {
+          const c1 = tf(a[0], a[1]);
+          const c2 = tf(a[2], a[3]);
+          const p = tf(a[4], a[5]);
+          for (let i = 1; i <= CURVE_STEPS; i++) {
+            cur.push(cubicPt(cx, cy, c1.x, c1.y, c2.x, c2.y, p.x, p.y, i / CURVE_STEPS));
+          }
+          cx = p.x; cy = p.y;
+        } else if (c.command === 'closePath') {
+          if (cur && cur.length) out.push(cur);
+          cur = null;
+        }
+      }
+      if (cur && cur.length) out.push(cur);
+    }
+
+    // Clip an infinite line to a set of polygons and return the spans
+    // that fall INSIDE the filled region, using the non-zero winding
+    // rule (so glyph counters / holes are correctly excluded).
+    //
+    // The line passes through (ox, oy) with unit direction (dx, dy);
+    // (nx, ny) is the unit normal. Returns an array of [u0, u1] pairs,
+    // where u is the signed distance along (dx, dy) from (ox, oy).
+    function clipLineToPolygons(ox, oy, dx, dy, nx, ny, polys) {
+      const cr = [];
+      for (const poly of polys) {
+        const m = poly.length;
+        for (let i = 0; i < m; i++) {
+          const A = poly[i];
+          const B = poly[(i + 1) % m];
+          const va = (A.x - ox) * nx + (A.y - oy) * ny;
+          const vb = (B.x - ox) * nx + (B.y - oy) * ny;
+          // Half-open crossing test avoids double-counting shared vertices.
+          let dir = 0;
+          if (va <= 0 && vb > 0) dir = 1;
+          else if (va > 0 && vb <= 0) dir = -1;
+          else continue;
+          const t = va / (va - vb);
+          const ix = A.x + t * (B.x - A.x);
+          const iy = A.y + t * (B.y - A.y);
+          const u = (ix - ox) * dx + (iy - oy) * dy;
+          cr.push({ u, dir });
+        }
+      }
+      if (cr.length < 2) return [];
+      cr.sort((p, q) => p.u - q.u);
+
+      const spans = [];
+      let wind = 0;
+      for (let i = 0; i < cr.length - 1; i++) {
+        wind += cr[i].dir;
+        if (wind !== 0) spans.push([cr[i].u, cr[i + 1].u]);
+      }
+      // Merge touching spans so a single stroke stays one rectangle.
+      const merged = [];
+      for (const s of spans) {
+        const last = merged[merged.length - 1];
+        if (last && s[0] - last[1] < 1e-6) last[1] = s[1];
+        else merged.push([s[0], s[1]]);
+      }
+      return merged;
+    }
+
+    // =========================================================
+    // Text layout
+    // =========================================================
+
+    // Greedy word-wrap the text into lines that fit the available
+    // width, honoring explicit newlines. Returns { lines, lineHeight,
+    // height }. Width is measured with the font's own glyph metrics.
+    // Width of `str` in canvas px under the current font instance & size.
+    function advanceWidthPx(str) {
+      if (!str) return 0;
+      const upm = fontInstance.unitsPerEm || font.unitsPerEm;
+      return (fontInstance.layout(str).advanceWidth * state.fontSize) / upm;
+    }
+
+    function layoutLines(text) {
+      const fontSize = state.fontSize;
+      const availW = p5Instance.width - 2 * MARGIN;
+      const lineHeight = fontSize * (state.lineHeightPct / 100);
+      const out = [];
+
+      for (const para of text.split('\n')) {
+        if (para.length === 0) { out.push(''); continue; }
+        const words = para.split(' ');
+        let cur = '';
+        for (const word of words) {
+          const test = cur === '' ? word : cur + ' ' + word;
+          if (cur !== '' && advanceWidthPx(test) > availW) {
+            out.push(cur);
+            cur = word;
+          } else {
+            cur = test;
+          }
+        }
+        out.push(cur);
+      }
+      return { lines: out, lineHeight, height: out.length * lineHeight };
+    }
+
+    // Overflow handling, in the exact order required:
+    //   1. Word-wrap the whole value. layoutLines() never truncates a line
+    //      mid-way — an overflowing word always moves to the next line.
+    //   2. Block height = (number of wrapped lines) * line height.
+    //   3. ONLY if that height exceeds (canvas height - 2*MARGIN) do we
+    //      remove whole words from the END, re-running the wrap after each
+    //      removal, and stopping the instant the block fits.
+    // Wrapping therefore always happens first; a word is deleted only when
+    // no amount of wrapping can make the block fit vertically.
+    function trimToFit(text) {
+      const maxH = p5Instance.height - 2 * MARGIN;
+
+      // Steps 1-2: wrap and measure. If the wrapped block already fits,
+      // keep every word — never delete what wrapping alone can hold.
+      if (layoutLines(text).height <= maxH) return text;
+
+      // Step 3: drop trailing words one at a time until it fits.
+      let t = text;
+      while (t.trim().length && layoutLines(t).height > maxH) {
+        const next = t.replace(/\s*\S+\s*$/, ''); // strip the last word
+        if (next === t) break;                    // nothing left to remove
+        t = next;
+      }
+      return t;
+    }
+
+    // =========================================================
+    // Pattern construction
+    // =========================================================
+
+    // Rebuild the glyph-clipped line rectangles from the current text,
+    // font, size, axes and pattern sliders. Stores the result in
+    // currentLines (drawn each frame and fed to Expand).
+    function rebuildPattern() {
+      currentLines = [];
+      if (!fontInstance) return;
+
+      const { lines, lineHeight } = layoutLines(textInput.value);
+      const upm = fontInstance.unitsPerEm || font.unitsPerEm;
+      const scale = state.fontSize / upm;
+      const firstBaseline = MARGIN + fontInstance.ascent * scale;
+
+      // Collect every (variation-applied) glyph contour as a polygon.
+      const polys = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i]) continue;
+        const baselineY = firstBaseline + i * lineHeight;
+        addLinePolygons(lines[i], MARGIN, baselineY, scale, polys);
+      }
+      if (!polys.length) return;
+
+      currentLines = linesFromPolygons(polys);
+    }
+
+    // Shape one line with fontkit and append all its glyph contours (as
+    // canvas-space polygons) to `out`. Glyph paths are in font units,
+    // y-up; we scale by `scale` and flip y about the baseline.
+    function addLinePolygons(text, originX, baselineY, scale, out) {
+      const run = fontInstance.layout(text);
+      let penX = 0;
+      for (let i = 0; i < run.glyphs.length; i++) {
+        const glyph = run.glyphs[i];
+        const pos = run.positions[i];
+        const gx = penX + pos.xOffset;
+        const gy = pos.yOffset;
+        const tf = (x, y) => ({
+          x: originX + (gx + x) * scale,
+          y: baselineY - (gy + y) * scale,
+        });
+        if (glyph.path && glyph.path.commands.length) {
+          pushGlyphPolygons(glyph.path, tf, out);
+        }
+        penX += pos.xAdvance;
+      }
+    }
+
+    // Intersect the parallel-line pattern with the glyph polygons and
+    // return one rectangle per visible span: [{x,y,w,h,angle}] where
+    // x/y is the segment CENTER, w = length, h = thickness, angle in
+    // radians. Lines run along d = (cos a, sin a) and are stacked along
+    // the normal n = (-sin a, cos a), spaced (thickness + gap) apart,
+    // anchored to a fixed grid through the origin so the stripes stay
+    // stable while editing.
+    function linesFromPolygons(polys) {
+      const rects = [];
+      const t = state.thickness;
+      const step = t + state.gap;
+      const a = (state.angle * Math.PI) / 180;
+
+      const dx = Math.cos(a), dy = Math.sin(a);
+      const nx = -Math.sin(a), ny = Math.cos(a);
+
+      // Range of perpendicular offsets that cover the glyph bbox.
+      let sMin = Infinity, sMax = -Infinity;
+      for (const poly of polys) {
+        for (const v of poly) {
+          const s = v.x * nx + v.y * ny;
+          if (s < sMin) sMin = s;
+          if (s > sMax) sMax = s;
+        }
+      }
+
+      const kStart = Math.ceil(sMin / step);
+      const kEnd = Math.floor(sMax / step);
+      for (let k = kStart; k <= kEnd; k++) {
+        const s = k * step;
+        const ox = s * nx;
+        const oy = s * ny;
+        const spans = clipLineToPolygons(ox, oy, dx, dy, nx, ny, polys);
+        for (const [u0, u1] of spans) {
+          const len = u1 - u0;
+          if (len <= 0) continue;
+          const um = (u0 + u1) / 2;
+          rects.push({
+            x: ox + um * dx,
+            y: oy + um * dy,
+            w: len,
+            h: t,
+            angle: a,
+          });
+        }
+      }
+      return rects;
+    }
+
+    // Drives the physics step + mouse interaction. Set true the moment
+    // Expand finishes wiring the bodies; the engine is stepped once per
+    // rendered frame from draw() (no runner/timer).
+    let physicsActive = false;
+
+    // =========================================================
+    // p5 sketch (instance mode so it cohabits with ES modules).
+    // =========================================================
+    const sketch = (p) => {
+      let host;
+
+      p.setup = () => {
+        host = document.getElementById('canvas-host');
+        const c = p.createCanvas(host.clientWidth, host.clientHeight);
+        c.parent(host);
+        p.rectMode(p.CENTER);
+        p.noStroke();
+      };
+
+      p.windowResized = () => {
+        p.resizeCanvas(host.clientWidth, host.clientHeight);
+        // Available width/height changed: re-fit and rebuild.
+        if (font && !state.expanded) {
+          const fitted = trimToFit(textInput.value);
+          if (fitted !== textInput.value) textInput.value = fitted;
+          rebuildPattern();
+        }
+      };
+
+      p.draw = () => {
+        // Step the simulation once per frame, before drawing.
+        if (physicsActive) updatePhysics();
+
+        p.background(bgColor);
+
+        if (!font) {
+          // Placeholder until a font is uploaded.
+          p.push();
+          p.fill('#bababa');
+          p.textAlign(p.CENTER, p.CENTER);
+          p.textSize(22);
+          p.textFont('sans-serif');
+          p.text(PLACEHOLDER, p.width / 2, p.height / 2);
+          p.pop();
+          return;
+        }
+
+        p.fill(patternColor);
+        p.noStroke();
+        const arr = physicsActive ? getBodies() : currentLines;
+        for (const r of arr) {
+          p.push();
+          p.translate(r.x, r.y);
+          p.rotate(r.angle);
+          p.rect(0, 0, r.w, r.h);
+          p.pop();
+        }
+      };
+
+      // Cursor interaction: mouseMoved fires on real movement with
+      // accurate per-event velocity, so the push responds immediately.
+      p.mouseMoved = () => {
+        if (!physicsActive) return;
+        const vx = p.mouseX - p.pmouseX;
+        const vy = p.mouseY - p.pmouseY;
+        applyMouseForce(p.mouseX, p.mouseY, vx, vy);
+      };
+    };
+
+    const p5Instance = new p5(sketch);
+
+    // =========================================================
+    // Control panel wiring
+    // =========================================================
+    const uploadBtn = document.getElementById('upload-btn');
+    const fontInput = document.getElementById('font-input');
+    const fontError = document.getElementById('font-error');
+    const axesContainer = document.getElementById('axes-container');
+    const textInput = document.getElementById('text-input');
+
+    const fontSizeInput = document.getElementById('fontSize');
+    const lineHeightInput = document.getElementById('lineHeight');
+    const thicknessInput = document.getElementById('thickness');
+    const gapInput = document.getElementById('gap');
+    const angleInput = document.getElementById('angle');
+    const fontSizeVal = document.getElementById('fontSize-val');
+    const lineHeightVal = document.getElementById('lineHeight-val');
+    const thicknessVal = document.getElementById('thickness-val');
+    const gapVal = document.getElementById('gap-val');
+    const angleVal = document.getElementById('angle-val');
+
+    const expandBtn = document.getElementById('expand-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const saveSettingsInput = document.getElementById('save-settings');
+    const exportBtn = document.getElementById('export-btn');
+    const resetPhysicsBtn = document.getElementById('reset-physics-btn');
+    const physicsInputs = Object.keys(PHYSICS_DEFAULTS).map((key) =>
+      document.getElementById(key)
+    );
+
+    // ---- Tier enable/disable ----------------------------------
+    // Tier 1 includes the color pickers and the dynamically-created
+    // axis sliders.
+    function tier1Controls() {
+      return [
+        fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput, expandBtn,
+        bgColorInput, patternColorInput,
+        ...axesContainer.querySelectorAll('.axis-input'),
+      ];
+    }
+    function setTier1Enabled(en) {
+      tier1Controls().forEach((c) => (c.disabled = !en));
+    }
+    function setTier2Enabled(en) {
+      physicsInputs.forEach((i) => (i.disabled = !en));
+      resetPhysicsBtn.disabled = !en;
+      exportBtn.disabled = !en;
+    }
+
+    // =========================================================
+    // Color pickers (Tier 1) — enabled once a font is loaded, same as
+    // the sliders. draw() reads bgColor / patternColor every frame, so
+    // updates apply immediately, both before and after Expand.
+    // =========================================================
+    const bgColorInput = document.getElementById('bg-color');
+    const patternColorInput = document.getElementById('pattern-color');
+    const bgColorVal = document.getElementById('bg-color-val');
+    const patternColorVal = document.getElementById('pattern-color-val');
+    const swapColorsBtn = document.getElementById('swap-colors');
+
+    bgColorInput.addEventListener('input', () => {
+      bgColor = bgColorInput.value;
+      bgColorVal.textContent = bgColor.toUpperCase();
+    });
+    patternColorInput.addEventListener('input', () => {
+      patternColor = patternColorInput.value;
+      patternColorVal.textContent = patternColor.toUpperCase();
+    });
+
+    // Swap background <-> pattern (Tier 0, always active). draw() reads
+    // both variables every frame — including the patternColor fill for
+    // active physics bodies — so the swap re-renders immediately.
+    swapColorsBtn.addEventListener('click', () => {
+      const temp = bgColor;
+      bgColor = patternColor;
+      patternColor = temp;
+      bgColorInput.value = bgColor;
+      patternColorInput.value = patternColor;
+      bgColorVal.textContent = bgColor.toUpperCase();
+      patternColorVal.textContent = patternColor.toUpperCase();
+    });
+
+    // =========================================================
+    // Font upload (Tier 0)
+    // =========================================================
+    uploadBtn.addEventListener('click', () => fontInput.click());
+
+    fontInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const name = file.name.toLowerCase();
+      if (!name.endsWith('.otf') && !name.endsWith('.ttf')) {
+        showFontError();
+        return;
+      }
+      try {
+        const buf = await file.arrayBuffer();
+        let parsed = fontkit.create(new Uint8Array(buf));
+        // A font collection (.ttc) resolves to its first face.
+        if (typeof parsed.layout !== 'function' && parsed.fonts) {
+          parsed = parsed.fonts[0];
+        }
+        font = parsed;
+        fontError.hidden = true;
+
+        injectFontFace(file);
+        uploadBtn.textContent = fontDisplayName(parsed) || file.name;
+        buildAxisSliders(parsed);
+        updateFontInstance();
+
+        setTier1Enabled(true);
+        textInput.hidden = false;
+        textInput.style.fontFamily = "'UploadedFont', sans-serif";
+        textInput.style.fontSize = state.fontSize + 'px';
+        applyVariationCSS();
+        textInput.focus();
+        rebuildPattern();
+      } catch (err) {
+        font = null;
+        fontInstance = null;
+        showFontError();
+      }
+      // Allow re-uploading the same file later.
+      fontInput.value = '';
+    });
+
+    function showFontError() {
+      fontError.textContent = 'Unsupported format. Please use OTF or TTF.';
+      fontError.hidden = false;
+    }
+
+    function fontDisplayName(f) {
+      return f.fullName || f.familyName || f.postscriptName || null;
+    }
+
+    function injectFontFace(file) {
+      if (fontFaceUrl) URL.revokeObjectURL(fontFaceUrl);
+      fontFaceUrl = URL.createObjectURL(file);
+      let st = document.getElementById('uploaded-font-face');
+      if (!st) {
+        st = document.createElement('style');
+        st.id = 'uploaded-font-face';
+        document.head.appendChild(st);
+      }
+      st.textContent =
+        `@font-face { font-family: 'UploadedFont'; src: url('${fontFaceUrl}'); }`;
+    }
+
+    // =========================================================
+    // Variable-font axis sliders
+    // =========================================================
+    function buildAxisSliders(f) {
+      axesContainer.innerHTML = '';
+      state.axes = {};
+
+      const axes = f.variationAxes;
+      if (!axes || !Object.keys(axes).length) return;
+
+      for (const [tag, ax] of Object.entries(axes)) {
+        const label = ax.name || tag;
+        const min = ax.min;
+        const max = ax.max;
+        const def = ax.default;
+        const step = (max - min) < 10 ? 0.1 : 1;
+        state.axes[tag] = def;
+
+        const div = document.createElement('div');
+        div.className = 'control';
+        const lab = document.createElement('label');
+        lab.innerHTML =
+          `${label} <span class="value" id="axis-${tag}-val">${def}</span>`;
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = min; input.max = max; input.step = step; input.value = def;
+        input.className = 'axis-input';
+        input.id = `axis-${tag}`;
+        input.dataset.tag = tag;
+
+        div.appendChild(lab);
+        div.appendChild(input);
+        axesContainer.appendChild(div);
+
+        input.addEventListener('input', () => {
+          const v = Number(input.value);
+          state.axes[tag] = v;
+          document.getElementById(`axis-${tag}-val`).textContent = v;
+          updateFontInstance();
+          applyVariationCSS();
+          rebuildPattern();
+        });
+      }
+    }
+
+    // Recompute the variation-applied font instance from state.axes.
+    // Static fonts (no axes) just use the base font.
+    function updateFontInstance() {
+      if (!font) { fontInstance = null; return; }
+      const hasAxes = font.variationAxes && Object.keys(font.variationAxes).length;
+      fontInstance = hasAxes ? font.getVariation(state.axes) : font;
+    }
+
+    // Mirror the axis values onto the textarea overlay via CSS so the
+    // caret tracks the variation; the canvas glyphs are reshaped for
+    // real by fontkit's getVariation().
+    function applyVariationCSS() {
+      const parts = Object.entries(state.axes).map(([t, v]) => `"${t}" ${v}`);
+      textInput.style.fontVariationSettings = parts.join(', ');
+    }
+
+    // =========================================================
+    // Tier 1 sliders
+    // =========================================================
+    fontSizeInput.addEventListener('input', () => {
+      state.fontSize = Number(fontSizeInput.value);
+      fontSizeVal.textContent = `${state.fontSize}px`;
+      textInput.style.fontSize = state.fontSize + 'px';
+      // Larger text may overflow vertically: re-fit then rebuild.
+      const fitted = trimToFit(textInput.value);
+      if (fitted !== textInput.value) textInput.value = fitted;
+      rebuildPattern();
+    });
+
+    lineHeightInput.addEventListener('input', () => {
+      state.lineHeightPct = Number(lineHeightInput.value);
+      lineHeightVal.textContent = `${state.lineHeightPct}%`;
+      textInput.style.lineHeight = state.lineHeightPct / 100;
+      // Taller lines may overflow vertically: re-fit then rebuild.
+      const fitted = trimToFit(textInput.value);
+      if (fitted !== textInput.value) textInput.value = fitted;
+      rebuildPattern();
+    });
+
+    thicknessInput.addEventListener('input', () => {
+      state.thickness = Number(thicknessInput.value);
+      thicknessVal.textContent = `${state.thickness}px`;
+      rebuildPattern();
+    });
+
+    gapInput.addEventListener('input', () => {
+      state.gap = Number(gapInput.value);
+      gapVal.textContent = `${state.gap}px`;
+      rebuildPattern();
+    });
+
+    angleInput.addEventListener('input', () => {
+      state.angle = Number(angleInput.value);
+      angleVal.textContent = `${state.angle}°`;
+      rebuildPattern();
+    });
+
+    // Text input: trim overflow from the end, then rebuild the pattern.
+    textInput.addEventListener('input', () => {
+      const fitted = trimToFit(textInput.value);
+      if (fitted !== textInput.value) textInput.value = fitted;
+      rebuildPattern();
+    });
+
+    // =========================================================
+    // Expand: glyph outlines -> physics bodies
+    // =========================================================
+    expandBtn.addEventListener('click', () => {
+      if (state.expanded || !font) return;
+      rebuildPattern();
+      if (!currentLines.length) return; // nothing to outline
+
+      initPhysics(currentLines, physicsConfig);
+      state.expanded = true;
+      physicsActive = true;
+
+      textInput.hidden = true;
+      setTier1Enabled(false);
+      setTier2Enabled(true);
+    });
+
+    // =========================================================
+    // SVG export — current positions & rotations of every rect.
+    // =========================================================
+    exportBtn.addEventListener('click', () => {
+      if (!state.expanded) return;
+
+      const w = p5Instance.width;
+      const h = p5Instance.height;
+      // Background rectangle first, behind all pattern rectangles.
+      let rects =
+        `  <rect x="0" y="0" width="${w}" height="${h}" fill="${bgColor}" />\n`;
+
+      for (const b of getBodies()) {
+        const x = b.x - b.w / 2;
+        const y = b.y - b.h / 2;
+        const deg = (b.angle * 180) / Math.PI;
+        rects +=
+          `  <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" ` +
+          `width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" ` +
+          `fill="${patternColor}" ` +
+          `transform="rotate(${deg.toFixed(2)} ${b.x.toFixed(2)} ${b.y.toFixed(2)})" />\n`;
+      }
+
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" ` +
+        `width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n${rects}</svg>\n`;
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pattern.svg';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // =========================================================
+    // Clear canvas. Both branches stop physics and empty the text.
+    //   • Save settings CHECKED  -> partial reset: keep the font and all
+    //     Tier 1 values, return to the text-input state.
+    //   • Save settings UNCHECKED -> full reset: unload the font and
+    //     restore the initial page-load state.
+    // =========================================================
+    clearBtn.addEventListener('click', () => {
+      // Both cases: stop physics, remove all bodies, empty the text.
+      physicsActive = false;
+      destroyPhysics();
+      state.expanded = false;
+      textInput.value = '';
+
+      // ---- Partial reset: keep the loaded font and its settings. ----
+      if (saveSettingsInput.checked && font) {
+        textInput.hidden = false;
+        setTier1Enabled(true);
+        setTier2Enabled(false);
+        textInput.focus();
+        rebuildPattern();
+        return;
+      }
+
+      // ---- Full reset: back to the initial page-load state. ----
+
+      // Unload the font and strip its UI traces.
+      font = null;
+      fontInstance = null;
+      axesContainer.innerHTML = '';
+      state.axes = {};
+      uploadBtn.textContent = 'Upload font';
+
+      // Colors back to defaults.
+      bgColor = '#F5F5F5'; bgColorInput.value = '#F5F5F5'; bgColorVal.textContent = '#F5F5F5';
+      patternColor = '#070707'; patternColorInput.value = '#070707'; patternColorVal.textContent = '#070707';
+
+      // Sliders + font size back to defaults.
+      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.textContent = '150px';
+      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.textContent = '120%';
+      state.thickness = 3; thicknessInput.value = '3'; thicknessVal.textContent = '3px';
+      state.gap = 3; gapInput.value = '3'; gapVal.textContent = '3px';
+      state.angle = 0; angleInput.value = '0'; angleVal.textContent = '0°';
+      textInput.style.fontSize = '150px';
+      textInput.style.lineHeight = '1.2';
+
+      // Physics back to defaults.
+      resetPhysicsToDefaults();
+
+      // Hide the overlay and lock every tiered control: only the Upload
+      // font button and Save settings checkbox stay active.
+      textInput.hidden = true;
+      setTier1Enabled(false);
+      setTier2Enabled(false);
+
+      rebuildPattern();
+    });
+
+    // =========================================================
+    // Physics section wiring (unchanged behavior)
+    // =========================================================
+    function setPhysicsValue(key, value) {
+      const decimals = PHYSICS_DEFAULTS[key].decimals;
+      document.getElementById(`${key}-val`).textContent = value.toFixed(decimals);
+      if (key === 'mouseForceScale') {
+        physicsConfig.mouseForceScale = value; // read live by applyMouseForce
+      } else {
+        setBodyProperty(key, value); // apply to live bodies + update config
+      }
+    }
+
+    Object.keys(PHYSICS_DEFAULTS).forEach((key) => {
+      const input = document.getElementById(key);
+      input.addEventListener('input', () => {
+        setPhysicsValue(key, Number(input.value));
+      });
+    });
+
+    function resetPhysicsToDefaults() {
+      Object.entries(PHYSICS_DEFAULTS).forEach(([key, def]) => {
+        document.getElementById(key).value = String(def.value);
+        setPhysicsValue(key, def.value);
+      });
+    }
+
+    resetPhysicsBtn.addEventListener('click', resetPhysicsToDefaults);
+  </script>
+</body>
+</html>
