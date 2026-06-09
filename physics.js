@@ -19,15 +19,6 @@ let config = null; // reference to the caller's physics config object
 const FORCE_K = 0.0009;  // base cursor force (per unit speed, per mass)
 const PUSH_RADIUS = 90;  // how close the cursor must be to push a body
 
-// Default config — also exported so the UI can mirror it.
-export const defaultConfig = {
-  frictionAir: 0.08,    // linear damping -> objects coast then stop
-  restitution: 0.3,     // bounciness on collision
-  friction: 0.1,        // surface friction
-  mouseForceScale: 1.0, // multiplier on the cursor push force
-  spin: 0.3,            // inertia multiplier (lower -> spins more easily)
-};
-
 // --- Public API ---------------------------------------------------
 
 // Initialise the simulation from an array of {x, y, w, h} and a
@@ -39,7 +30,7 @@ export const defaultConfig = {
 export function initPhysics(rects, cfg) {
   destroyPhysics();
 
-  config = cfg || { ...defaultConfig };
+  config = cfg;
 
   engine = Engine.create();
   world = engine.world;
@@ -81,7 +72,7 @@ export function updatePhysics() {
 // inertia multiplier applied from each body's stored baseline).
 // No-op on the bodies if physics isn't running.
 export function setBodyProperty(prop, value) {
-  if (config) config[prop] = value;
+  config[prop] = value;
   if (!engine) return;
   for (const body of bodies) {
     if (prop === 'spin') {
@@ -101,7 +92,7 @@ export function applyMouseForce(mx, my, vx, vy) {
   const speed = Math.hypot(vx, vy);
   if (speed < 0.01) return; // cursor essentially still
 
-  const userScale = config ? config.mouseForceScale : 1.0;
+  const userScale = config.mouseForceScale;
 
   for (const body of bodies) {
     const dx = body.position.x - mx;

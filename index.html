@@ -699,11 +699,6 @@
       // Cursor interaction: force is applied while the mouse button is
       // held and the cursor moves. p5 fires mouseDragged (not mouseMoved)
       // during a held-button drag, with accurate per-event velocity.
-      p.mouseMoved = () => {
-        if (!physicsActive) return;
-        const vx = p.mouseX - p.pmouseX;
-        const vy = p.mouseY - p.pmouseY;
-      };
       p.mouseDragged = () => {
         if (!physicsActive) return;
         const vx = p.mouseX - p.pmouseX;
