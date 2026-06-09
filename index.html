@@ -225,12 +225,12 @@
       <!-- Tier 1: active after a font is loaded -->
       <div class="control">
         <label>Font size <span class="value" id="fontSize-val">150px</span></label>
-        <input type="range" id="fontSize" min="72" max="360" step="1" value="150" disabled />
+        <input type="range" id="fontSize" min="72" max="360" step="1" value="150" disabled aria-label="Font size"/>
       </div>
 
       <div class="control">
         <label>Line height <span class="value" id="lineHeight-val">120%</span></label>
-        <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled />
+        <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
       </div>
 
       <!-- Variable-font axis sliders are injected here at load time -->
@@ -238,18 +238,18 @@
 
       <div class="control">
         <label>Line thickness <span class="value" id="thickness-val">3px</span></label>
-        <input type="range" id="thickness" min="1" max="20" value="3" disabled />
+        <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
       </div>
 
       <div class="control">
         <label>Gap <span class="value" id="gap-val">3px</span></label>
-        <input type="range" id="gap" min="0" max="10" value="3" disabled />
+        <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
       </div>
 
       <!-- Angle (0 = horizontal, 90 = vertical) -->
       <div class="control">
         <label>Angle <span class="value" id="angle-val">0°</span></label>
-        <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled />
+        <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
       </div>
 
       <button class="action" id="expand-btn" disabled>Expand</button>
@@ -267,27 +267,27 @@
 
         <div class="control">
           <label>Air resistance <span class="value" id="frictionAir-val">0.40</span></label>
-          <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled />
+          <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
         </div>
 
         <div class="control">
           <label>Bounciness <span class="value" id="restitution-val">0.3</span></label>
-          <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled />
+          <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
         </div>
 
         <div class="control">
           <label>Surface friction <span class="value" id="friction-val">0.1</span></label>
-          <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled />
+          <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
         </div>
 
         <div class="control">
           <label>Cursor force <span class="value" id="mouseForceScale-val">0.2</span></label>
-          <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled />
+          <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
         </div>
 
         <div class="control">
           <label>Spin <span class="value" id="spin-val">0.80</span></label>
-          <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled />
+          <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
         </div>
 
         <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
