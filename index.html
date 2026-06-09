@@ -94,33 +94,6 @@
     }
     .checkbox-control input { cursor: pointer; }
 
-    /* Native color pickers, sized to match the other controls */
-    input[type="color"] {
-      width: 100%;
-      height: 36px;
-      padding: 2px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: #fff;
-      cursor: pointer;
-    }
-
-    /* Swap-colors button, centered between the two color pickers */
-    .swap-btn {
-      display: block;
-      margin: -8px auto 14px;
-      width: 36px;
-      height: 28px;
-      padding: 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background: #fff;
-      color: #070707;
-      font-size: 15px;
-      line-height: 1;
-      cursor: pointer;
-    }
-    .swap-btn:hover { background: #f2f2f2; }
 
     /* Action buttons */
     .action {
@@ -181,10 +154,62 @@
       z-index: 2;
     }
     #text-input::selection { background: rgba(7, 7, 7, 0.12); }
+
+    /* Social links overlaid on the canvas area, bottom-right */
+    #social-icons {
+      position: absolute;
+      bottom: 80px;
+      right: 80px;
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      z-index: 10;
+    }
+    #social-icons img {
+      display: block;
+      /* Render the icons as solid #070707 by default */
+      filter: brightness(0);
+      transition: filter 0.15s ease;
+    }
+    /* On hover, switch to each brand colour */
+    #icon-behance:hover img {
+      /* approximates #0059FF */
+      filter: invert(31%) sepia(98%) saturate(3492%) hue-rotate(220deg) brightness(102%) contrast(108%);
+    }
+    #icon-linkedin:hover img {
+      /* approximates #0068C9 */
+      filter: invert(28%) sepia(96%) saturate(1746%) hue-rotate(187deg) brightness(94%) contrast(101%);
+    }
+
+    /* Mobile block screen — shown only on narrow viewports */
+    #mobile-block {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #F5F5F5;
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      text-align: center;
+      font-family: system-ui, sans-serif;
+      font-size: 16px;
+      color: #bababa;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      #mobile-block {
+        display: flex;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <!-- Mobile device block screen -->
+  <div id="mobile-block">I do not introduce the log (sorry, guys, no mobile yet, please open the project in desktop)</div>
+
   <div id="app">
     <!-- ====================== Control panel ====================== -->
     <aside id="panel">
@@ -206,21 +231,6 @@
       <div class="control">
         <label>Line height <span class="value" id="lineHeight-val">120%</span></label>
         <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled />
-      </div>
-
-      <!-- Tier 1: colors (active once a font is loaded) -->
-      <div class="control">
-        <label>Background <span class="value" id="bg-color-val">#F5F5F5</span></label>
-        <input type="color" id="bg-color" value="#F5F5F5" disabled />
-      </div>
-
-      <!-- Tier 0: swap background/pattern colors (always active) -->
-      <button type="button" class="swap-btn" id="swap-colors"
-              title="Swap colors" aria-label="Swap colors">&#x21c5;</button>
-
-      <div class="control">
-        <label>Pattern <span class="value" id="pattern-color-val">#070707</span></label>
-        <input type="color" id="pattern-color" value="#070707" disabled />
       </div>
 
       <!-- Variable-font axis sliders are injected here at load time -->
@@ -288,6 +298,16 @@
     <!-- ====================== Canvas host ====================== -->
     <div id="canvas-host">
       <textarea id="text-input" spellcheck="false" autocomplete="off" hidden></textarea>
+
+      <!-- Social links, overlaid bottom-right of the canvas area -->
+      <div id="social-icons">
+        <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
+          <img src="behance.svg" width="40" height="40" alt="Behance" />
+        </a>
+        <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
+          <img src="linkedin.svg" width="40" height="40" alt="LinkedIn" />
+        </a>
+      </div>
     </div>
   </div>
 
@@ -315,7 +335,7 @@
     const MARGIN = 80; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
     const PLACEHOLDER =
-      "Wait for the tea, the fish aren't running!\n(Please upload the font file)";
+      "Wait for the tea, the fish aren't running!\n(Please upload a font file)";
 
     // ---------------- App state ----------------
     const state = {
@@ -327,12 +347,6 @@
       axes: {},          // { axisTag: value } for variable fonts
       expanded: false,
     };
-
-    // Display colors (live-editable via the color pickers). The pattern
-    // color is display-only — applied as the fill for both the static
-    // strokes and the active Matter.js bodies, never a physics property.
-    let bgColor = '#F5F5F5';
-    let patternColor = '#070707';
 
     // Loaded font + derived render data.
     let font = null;            // base fontkit Font
@@ -656,7 +670,7 @@
         // Step the simulation once per frame, before drawing.
         if (physicsActive) updatePhysics();
 
-        p.background(bgColor);
+        p.background('#F5F5F5');
 
         if (!font) {
           // Placeholder until a font is uploaded.
@@ -670,7 +684,7 @@
           return;
         }
 
-        p.fill(patternColor);
+        p.fill('#070707');
         p.noStroke();
         const arr = physicsActive ? getBodies() : currentLines;
         for (const r of arr) {
@@ -682,9 +696,15 @@
         }
       };
 
-      // Cursor interaction: mouseMoved fires on real movement with
-      // accurate per-event velocity, so the push responds immediately.
+      // Cursor interaction: force is applied while the mouse button is
+      // held and the cursor moves. p5 fires mouseDragged (not mouseMoved)
+      // during a held-button drag, with accurate per-event velocity.
       p.mouseMoved = () => {
+        if (!physicsActive) return;
+        const vx = p.mouseX - p.pmouseX;
+        const vy = p.mouseY - p.pmouseY;
+      };
+      p.mouseDragged = () => {
         if (!physicsActive) return;
         const vx = p.mouseX - p.pmouseX;
         const vy = p.mouseY - p.pmouseY;
@@ -724,12 +744,10 @@
     );
 
     // ---- Tier enable/disable ----------------------------------
-    // Tier 1 includes the color pickers and the dynamically-created
-    // axis sliders.
+    // Tier 1 includes the dynamically-created axis sliders.
     function tier1Controls() {
       return [
         fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput, expandBtn,
-        bgColorInput, patternColorInput,
         ...axesContainer.querySelectorAll('.axis-input'),
       ];
     }
@@ -741,39 +759,6 @@
       resetPhysicsBtn.disabled = !en;
       exportBtn.disabled = !en;
     }
-
-    // =========================================================
-    // Color pickers (Tier 1) — enabled once a font is loaded, same as
-    // the sliders. draw() reads bgColor / patternColor every frame, so
-    // updates apply immediately, both before and after Expand.
-    // =========================================================
-    const bgColorInput = document.getElementById('bg-color');
-    const patternColorInput = document.getElementById('pattern-color');
-    const bgColorVal = document.getElementById('bg-color-val');
-    const patternColorVal = document.getElementById('pattern-color-val');
-    const swapColorsBtn = document.getElementById('swap-colors');
-
-    bgColorInput.addEventListener('input', () => {
-      bgColor = bgColorInput.value;
-      bgColorVal.textContent = bgColor.toUpperCase();
-    });
-    patternColorInput.addEventListener('input', () => {
-      patternColor = patternColorInput.value;
-      patternColorVal.textContent = patternColor.toUpperCase();
-    });
-
-    // Swap background <-> pattern (Tier 0, always active). draw() reads
-    // both variables every frame — including the patternColor fill for
-    // active physics bodies — so the swap re-renders immediately.
-    swapColorsBtn.addEventListener('click', () => {
-      const temp = bgColor;
-      bgColor = patternColor;
-      patternColor = temp;
-      bgColorInput.value = bgColor;
-      patternColorInput.value = patternColor;
-      bgColorVal.textContent = bgColor.toUpperCase();
-      patternColorVal.textContent = patternColor.toUpperCase();
-    });
 
     // =========================================================
     // Font upload (Tier 0)
@@ -977,7 +962,7 @@
       const h = p5Instance.height;
       // Background rectangle first, behind all pattern rectangles.
       let rects =
-        `  <rect x="0" y="0" width="${w}" height="${h}" fill="${bgColor}" />\n`;
+        `  <rect x="0" y="0" width="${w}" height="${h}" fill="#F5F5F5" />\n`;
 
       for (const b of getBodies()) {
         const x = b.x - b.w / 2;
@@ -986,7 +971,7 @@
         rects +=
           `  <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" ` +
           `width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" ` +
-          `fill="${patternColor}" ` +
+          `fill="#070707" ` +
           `transform="rotate(${deg.toFixed(2)} ${b.x.toFixed(2)} ${b.y.toFixed(2)})" />\n`;
       }
 
@@ -1035,10 +1020,6 @@
       axesContainer.innerHTML = '';
       state.axes = {};
       uploadBtn.textContent = 'Upload font';
-
-      // Colors back to defaults.
-      bgColor = '#F5F5F5'; bgColorInput.value = '#F5F5F5'; bgColorVal.textContent = '#F5F5F5';
-      patternColor = '#070707'; patternColorInput.value = '#070707'; patternColorVal.textContent = '#070707';
 
       // Sliders + font size back to defaults.
       state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.textContent = '150px';
