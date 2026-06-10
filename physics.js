@@ -131,6 +131,31 @@ export function getBodies() {
   }));
 }
 
+// Snapshot the full motion state of every body, for undo/redo.
+// -> [{ id, x, y, angle, vx, vy, av }]
+export function captureState() {
+  return bodies.map((b) => ({
+    id: b.id,
+    x: b.position.x, y: b.position.y, angle: b.angle,
+    vx: b.velocity.x, vy: b.velocity.y, av: b.angularVelocity,
+  }));
+}
+
+// Restore a snapshot produced by captureState(). Bodies are matched by
+// id, so it's safe even if the array order changed; missing ids skip.
+export function restoreState(snapshot) {
+  if (!engine || !snapshot) return;
+  const byId = new Map(bodies.map((b) => [b.id, b]));
+  for (const s of snapshot) {
+    const b = byId.get(s.id);
+    if (!b) continue;
+    Body.setPosition(b, { x: s.x, y: s.y });
+    Body.setAngle(b, s.angle);
+    Body.setVelocity(b, { x: s.vx, y: s.vy });
+    Body.setAngularVelocity(b, s.av);
+  }
+}
+
 // Tear everything down and free references.
 export function destroyPhysics() {
   if (world) Composite.clear(world, false);

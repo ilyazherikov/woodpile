@@ -374,6 +374,8 @@
       getBodies,
       destroyPhysics,
       setBodyProperty,
+      captureState,
+      restoreState,
     } from './physics.js';
 
     // fontkit (ESM, browser-ready): parses fonts, shapes text, and —
@@ -709,6 +711,14 @@
     // rendered frame from draw() (no runner/timer).
     let physicsActive = false;
 
+    // Undo/redo history for cursor interactions. One action = one drag
+    // (mousePressed -> mouseReleased). pendingSnapshot holds the state
+    // captured at press, committed to undoStack on release.
+    const undoStack = [];
+    const redoStack = [];
+    const HISTORY_LIMIT = 50;
+    let pendingSnapshot = null;
+
     // =========================================================
     // p5 sketch (instance mode so it cohabits with ES modules).
     // =========================================================
@@ -772,9 +782,52 @@
         const vy = p.mouseY - p.pmouseY;
         applyMouseForce(p.mouseX, p.mouseY, vx, vy);
       };
+
+      // Undo/redo drag boundaries: snapshot BEFORE the push at press,
+      // commit it to the undo stack at release.
+      p.mousePressed = () => {
+        if (!physicsActive) return;
+        pendingSnapshot = captureState();
+      };
+      p.mouseReleased = () => {
+        if (!physicsActive || !pendingSnapshot) return;
+        undoStack.push(pendingSnapshot);
+        if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        redoStack.length = 0; // a new action invalidates the redo branch
+        pendingSnapshot = null;
+      };
     };
 
     const p5Instance = new p5(sketch);
+
+    // =========================================================
+    // Undo (Cmd/Ctrl+Z) / Redo (Cmd/Ctrl+Shift+Z) for drag actions.
+    // =========================================================
+    window.addEventListener('keydown', (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.key.toLowerCase() !== 'z') return;
+      if (!physicsActive) return;
+
+      if (e.shiftKey) {
+        // Redo
+        if (redoStack.length === 0) return;
+        e.preventDefault();
+        const next = redoStack.pop();
+        // Save current state so this redo can be undone again.
+        undoStack.push(captureState());
+        if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+        restoreState(next);
+      } else {
+        // Undo
+        if (undoStack.length === 0) return;
+        e.preventDefault();
+        const prev = undoStack.pop();
+        // Save current state so it can be redone.
+        redoStack.push(captureState());
+        if (redoStack.length > HISTORY_LIMIT) redoStack.shift();
+        restoreState(prev);
+      }
+    });
 
     // =========================================================
     // Control panel wiring
@@ -1006,6 +1059,7 @@
       if (!currentLines.length) return; // nothing to outline
 
       initPhysics(currentLines, physicsConfig);
+      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = true;
       physicsActive = true;
 
@@ -1058,9 +1112,11 @@
     //     restore the initial page-load state.
     // =========================================================
     clearBtn.addEventListener('click', () => {
-      // Both cases: stop physics, remove all bodies, empty the text.
+      // Both cases: stop physics, remove all bodies, empty the text,
+      // and clear the undo/redo history.
       physicsActive = false;
       destroyPhysics();
+      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = false;
       textInput.value = '';
 
