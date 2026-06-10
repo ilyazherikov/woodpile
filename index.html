@@ -546,6 +546,23 @@
         const words = para.split(' ');
         let cur = '';
         for (const word of words) {
+          // A word too wide to fit on its own line is broken character
+          // by character, mirroring the textarea's word-break: break-word
+          // so the caret and the rendered glyphs stay in sync.
+          if (advanceWidthPx(word) > availW) {
+            if (cur !== '') { out.push(cur); cur = ''; }
+            let chunk = '';
+            for (const ch of word) {
+              if (chunk !== '' && advanceWidthPx(chunk + ch) > availW) {
+                out.push(chunk);
+                chunk = ch;
+              } else {
+                chunk += ch;
+              }
+            }
+            cur = chunk; // partial remainder keeps accumulating words
+            continue;
+          }
           const test = cur === '' ? word : cur + ' ' + word;
           if (cur !== '' && advanceWidthPx(test) > availW) {
             out.push(cur);
@@ -1059,6 +1076,15 @@
       // Unload the font and strip its UI traces.
       font = null;
       fontInstance = null;
+      // Release the @font-face blob URL and its injected style element,
+      // and clear any stale variation settings on the overlay.
+      if (fontFaceUrl) {
+        URL.revokeObjectURL(fontFaceUrl);
+        fontFaceUrl = null;
+      }
+      const st = document.getElementById('uploaded-font-face');
+      if (st) st.remove();
+      textInput.style.fontVariationSettings = '';
       axesContainer.innerHTML = '';
       state.axes = {};
       uploadBtn.textContent = 'Upload font';

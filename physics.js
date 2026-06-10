@@ -72,6 +72,7 @@ export function updatePhysics() {
 // inertia multiplier applied from each body's stored baseline).
 // No-op on the bodies if physics isn't running.
 export function setBodyProperty(prop, value) {
+  if (!config) return;
   config[prop] = value;
   if (!engine) return;
   for (const body of bodies) {
