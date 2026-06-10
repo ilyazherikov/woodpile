@@ -219,6 +219,26 @@
       width: 100%;
       box-sizing: border-box;
     }
+
+    #mobile-social {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    #mobile-social img {
+      width: 60px;
+      height: 60px;
+      filter: brightness(0);
+    }
+
+    #mobile-icon-behance:hover img  { filter: invert(14%) sepia(100%) saturate(4000%) hue-rotate(210deg) brightness(100%); }
+    #mobile-icon-linkedin:hover img { filter: invert(20%) sepia(80%) saturate(2000%) hue-rotate(185deg) brightness(90%); }
   </style>
 </head>
 
@@ -226,8 +246,15 @@
   <!-- Mobile device block screen -->
   <div id="mobile-block">
     <img src="woodpile01.svg" id="mobile-logo" alt="logo">
-    <p>I do not introduce the log.
-    (Sorry, guys, no mobile yet, please open the project on desktop)</p>
+    <p>I do not introduce the log.<br>(Sorry, guys, no mobile yet, please open the project on desktop)</p>
+    <div id="mobile-social">
+      <a href="https://www.behance.net/ilyazherikov" target="_blank" id="mobile-icon-behance">
+        <img src="behance.svg" width="60" height="60" alt="Behance"/>
+      </a>
+      <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="mobile-icon-linkedin">
+        <img src="linkedin.svg" width="60" height="60" alt="LinkedIn"/>
+      </a>
+    </div>
   </div>
 
   <div id="app">
