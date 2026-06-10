@@ -198,6 +198,16 @@
       line-height: 1.5;
     }
 
+    #mobile-logo {
+      width: calc(100% - 80px);
+      margin: 40px 40px 0 40px;
+      display: block;
+    }
+
+    #mobile-block p {
+      padding: 0 40px;
+    }
+
     @media (max-width: 768px) {
       #mobile-block {
         display: flex;
@@ -208,7 +218,11 @@
 
 <body>
   <!-- Mobile device block screen -->
-  <div id="mobile-block">I do not introduce the log.\n(Sorry, guys, no mobile yet, please open the project on desktop)</div>
+  <div id="mobile-block">
+    <img src="woodpile01.svg" id="mobile-logo" alt="logo">
+    <p>I do not introduce the log.
+    (Sorry, guys, no mobile yet, please open the project on desktop)</p>
+  </div>
 
   <div id="app">
     <!-- ====================== Control panel ====================== -->
