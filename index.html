@@ -405,6 +405,7 @@
     let fontInstance = null;    // variation-applied instance (or base font)
     let fontFaceUrl = null;     // blob URL backing the @font-face
     let currentLines = [];      // [{x,y,w,h,angle}] glyph-clipped strokes
+    let lastGoodText = '';      // last textarea value that fit vertically
 
     // Physics config — single source of truth for all tuning.
     const physicsConfig = {
@@ -533,17 +534,18 @@
     // Greedy word-wrap the text into lines that fit the available
     // width, honoring explicit newlines. Returns { lines, lineHeight,
     // height }. Width is measured with the font's own glyph metrics.
-    // Width of `str` in canvas px under the current font instance & size.
-    function advanceWidthPx(str) {
-      if (!str) return 0;
-      const upm = fontInstance.unitsPerEm || font.unitsPerEm;
-      return (fontInstance.layout(str).advanceWidth * state.fontSize) / upm;
-    }
-
-    function layoutLines(text) {
-      const fontSize = state.fontSize;
+    // Pure word-wrap at an EXPLICIT font size: returns just the wrapped
+    // lines, depending only on (text, size) and the loaded font. No state
+    // reads, no side effects. Line height does NOT affect wrapping — only
+    // the vertical block height, which callers compute separately.
+    function layoutLinesAtSize(text, size) {
       const availW = p5Instance.width - 2 * MARGIN;
-      const lineHeight = fontSize * (state.lineHeightPct / 100);
+      // Width of `str` in canvas px at the given size.
+      const widthPx = (str) => {
+        if (!str) return 0;
+        const upm = fontInstance.unitsPerEm || font.unitsPerEm;
+        return (fontInstance.layout(str).advanceWidth * size) / upm;
+      };
       const out = [];
 
       for (const para of text.split('\n')) {
@@ -554,11 +556,11 @@
           // A word too wide to fit on its own line is broken character
           // by character, mirroring the textarea's word-break: break-word
           // so the caret and the rendered glyphs stay in sync.
-          if (advanceWidthPx(word) > availW) {
+          if (widthPx(word) > availW) {
             if (cur !== '') { out.push(cur); cur = ''; }
             let chunk = '';
             for (const ch of word) {
-              if (chunk !== '' && advanceWidthPx(chunk + ch) > availW) {
+              if (chunk !== '' && widthPx(chunk + ch) > availW) {
                 out.push(chunk);
                 chunk = ch;
               } else {
@@ -569,7 +571,7 @@
             continue;
           }
           const test = cur === '' ? word : cur + ' ' + word;
-          if (cur !== '' && advanceWidthPx(test) > availW) {
+          if (cur !== '' && widthPx(test) > availW) {
             out.push(cur);
             cur = word;
           } else {
@@ -578,33 +580,67 @@
         }
         out.push(cur);
       }
-      return { lines: out, lineHeight, height: out.length * lineHeight };
+      return out;
     }
 
-    // Overflow handling, in the exact order required:
-    //   1. Word-wrap the whole value. layoutLines() never truncates a line
-    //      mid-way — an overflowing word always moves to the next line.
-    //   2. Block height = (number of wrapped lines) * line height.
-    //   3. ONLY if that height exceeds (canvas height - 2*MARGIN) do we
-    //      remove whole words from the END, re-running the wrap after each
-    //      removal, and stopping the instant the block fits.
-    // Wrapping therefore always happens first; a word is deleted only when
-    // no amount of wrapping can make the block fit vertically.
-    function trimToFit(text) {
-      const maxH = p5Instance.height - 2 * MARGIN;
+    // Current-state wrapper: wraps at the current font size and reports the
+    // line height + total block height for the current lineHeightPct.
+    function layoutLines(text) {
+      const lines = layoutLinesAtSize(text, state.fontSize);
+      const lineHeight = state.fontSize * (state.lineHeightPct / 100);
+      return { lines, lineHeight, height: lines.length * lineHeight };
+    }
 
-      // Steps 1-2: wrap and measure. If the wrapped block already fits,
-      // keep every word — never delete what wrapping alone can hold.
-      if (layoutLines(text).height <= maxH) return text;
+    // Does `textInput.value` fit vertically at the given size AND line
+    // height? Wrapping depends on size only; line height scales the block
+    // height. Same maxH (canvas height - 2*MARGIN) as the typing overflow
+    // rule, so both sliders stay consistent with typing behavior.
+    function textFits(size, lhPct) {
+      const lines = layoutLinesAtSize(textInput.value, size);
+      const blockH = lines.length * size * (lhPct / 100);
+      return blockH <= (p5Instance.height - 2 * MARGIN);
+    }
 
-      // Step 3: drop trailing words one at a time until it fits.
-      let t = text;
-      while (t.trim().length && layoutLines(t).height > maxH) {
-        const next = t.replace(/\s*\S+\s*$/, ''); // strip the last word
-        if (next === t) break;                    // nothing left to remove
-        t = next;
+    // True if `text` fits vertically at the current font size + line
+    // height. Wrapping depends on size only; line height scales the block
+    // height. Same threshold (canvas height - 2*MARGIN) as the slider clamps.
+    function fitsVertically(text) {
+      const lines = layoutLinesAtSize(text, state.fontSize);
+      const blockH = lines.length * state.fontSize * (state.lineHeightPct / 100);
+      return blockH <= (p5Instance.height - 2 * MARGIN);
+    }
+
+    // Longest prefix of `text` that fits vertically. Trims whole words from
+    // the END first; if not even one word fits (or a single word is
+    // overlong), grows character by character to keep the maximum that fits.
+    function truncateToFit(text) {
+      if (fitsVertically(text)) return text;
+
+      // 1) Try trimming whole words from the end.
+      const words = text.split(/(\s+)/); // keep separators as tokens
+      let built = '';
+      let lastFit = '';
+      for (const token of words) {
+        const candidate = built + token;
+        if (fitsVertically(candidate)) {
+          built = candidate;
+          if (token.trim() !== '') lastFit = built; // record at word ends
+        } else {
+          break;
+        }
       }
-      return t;
+      // Prefer the last whole-word boundary that fit.
+      let result = lastFit || '';
+
+      // 2) If not even one word fit, or a single overlong word remains,
+      //    grow character by character from result.
+      let charCandidate = result;
+      for (let i = result.length; i < text.length; i++) {
+        const next = charCandidate + text[i];
+        if (fitsVertically(next)) charCandidate = next;
+        else break;
+      }
+      return charCandidate;
     }
 
     // =========================================================
@@ -737,8 +773,9 @@
         p.resizeCanvas(host.clientWidth, host.clientHeight);
         // Available width/height changed: re-fit and rebuild.
         if (font && !state.expanded) {
-          const fitted = trimToFit(textInput.value);
+          const fitted = truncateToFit(textInput.value);
           if (fitted !== textInput.value) textInput.value = fitted;
+          lastGoodText = textInput.value;
           rebuildPattern();
         }
       };
@@ -1006,22 +1043,54 @@
     // Tier 1 sliders
     // =========================================================
     fontSizeInput.addEventListener('input', () => {
-      state.fontSize = Number(fontSizeInput.value);
+      // Growing must never delete text: clamp to the largest size that
+      // still fits. Shrinking is always allowed.
+      const requested = parseInt(fontSizeInput.value, 10);
+      const current = state.fontSize;
+      if (requested > current) {
+        if (textFits(requested, state.lineHeightPct)) {
+          state.fontSize = requested;
+        } else {
+          let lo = current, hi = requested, best = current;
+          while (lo <= hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (textFits(mid, state.lineHeightPct)) { best = mid; lo = mid + 1; }
+            else { hi = mid - 1; }
+          }
+          state.fontSize = best;
+          fontSizeInput.value = best;
+        }
+      } else {
+        state.fontSize = requested;
+      }
       fontSizeVal.textContent = `${state.fontSize}px`;
       textInput.style.fontSize = state.fontSize + 'px';
-      // Larger text may overflow vertically: re-fit then rebuild.
-      const fitted = trimToFit(textInput.value);
-      if (fitted !== textInput.value) textInput.value = fitted;
       rebuildPattern();
     });
 
     lineHeightInput.addEventListener('input', () => {
-      state.lineHeightPct = Number(lineHeightInput.value);
+      // Growing must never delete text: clamp to the largest line height
+      // that still fits. Shrinking is always allowed.
+      const requested = parseInt(lineHeightInput.value, 10);
+      const current = state.lineHeightPct;
+      if (requested > current) {
+        if (textFits(state.fontSize, requested)) {
+          state.lineHeightPct = requested;
+        } else {
+          let lo = current, hi = requested, best = current;
+          while (lo <= hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (textFits(state.fontSize, mid)) { best = mid; lo = mid + 1; }
+            else { hi = mid - 1; }
+          }
+          state.lineHeightPct = best;
+          lineHeightInput.value = best;
+        }
+      } else {
+        state.lineHeightPct = requested;
+      }
       lineHeightVal.textContent = `${state.lineHeightPct}%`;
       textInput.style.lineHeight = state.lineHeightPct / 100;
-      // Taller lines may overflow vertically: re-fit then rebuild.
-      const fitted = trimToFit(textInput.value);
-      if (fitted !== textInput.value) textInput.value = fitted;
       rebuildPattern();
     });
 
@@ -1043,10 +1112,23 @@
       rebuildPattern();
     });
 
-    // Text input: trim overflow from the end, then rebuild the pattern.
+    // Text input: never delete already-accepted text on vertical overflow.
+    // A fitting value is accepted as-is; an overflowing one (an overflowing
+    // keystroke, or a large paste) is truncated to the maximum prefix that
+    // fits, and the caret is clamped into the shorter text.
     textInput.addEventListener('input', () => {
-      const fitted = trimToFit(textInput.value);
-      if (fitted !== textInput.value) textInput.value = fitted;
+      const val = textInput.value;
+      if (fitsVertically(val)) {
+        lastGoodText = val;                 // accept as-is
+      } else {
+        const caret = textInput.selectionStart;
+        const fitted = truncateToFit(val);
+        textInput.value = fitted;
+        lastGoodText = fitted;
+        // Clamp caret into the new (shorter) text.
+        const pos = Math.min(caret, fitted.length);
+        textInput.setSelectionRange(pos, pos);
+      }
       rebuildPattern();
     });
 
@@ -1119,6 +1201,7 @@
       undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = false;
       textInput.value = '';
+      lastGoodText = '';
 
       // ---- Partial reset: keep the loaded font and its settings. ----
       if (saveSettingsInput.checked && font) {
