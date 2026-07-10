@@ -437,8 +437,12 @@
   </div>
 
   <!-- ====================== CDN libraries ====================== -->
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"
+          integrity="sha384-6Twx1hAeKnwfOYJAHtYeJETRiGD5pRPkjjh0pVbG1QoesncjOpw5e75Y1kOkXeRI"
+          crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"
+          integrity="sha384-OqQP3UcU7efkEYDRjGmQou2uEvzGFGRtwdYXTjnupeB9cWogSgQ4BOhyklFBYbBR"
+          crossorigin="anonymous"></script>
 
   <!-- ====================== App (ES module) ====================== -->
   <script type="module">
@@ -455,7 +459,7 @@
 
     // fontkit (ESM, browser-ready): parses fonts, shapes text, and —
     // crucially — produces variation-applied glyph outlines.
-    import * as fontkitNS from 'https://esm.sh/fontkit@2';
+    import * as fontkitNS from 'https://esm.sh/fontkit@2.0.4';
     const fontkit = fontkitNS.default || fontkitNS;
 
     // ---------------- Constants ----------------
@@ -1027,39 +1031,43 @@
         showFontError();
         return;
       }
+      // Parse first, commit after: if the new file is corrupt, the
+      // previously loaded font (if any) stays fully intact — state, UI,
+      // @font-face and axis sliders are only touched on success.
+      let parsed;
       try {
         const buf = await file.arrayBuffer();
-        let parsed = fontkit.create(new Uint8Array(buf));
+        parsed = fontkit.create(new Uint8Array(buf));
         // A font collection (.ttc) resolves to its first face.
         if (typeof parsed.layout !== 'function' && parsed.fonts) {
           parsed = parsed.fonts[0];
         }
-        font = parsed;
-        fontError.hidden = true;
-
-        injectFontFace(file);
-
-        // First load: move the button off the canvas overlay into the left
-        // panel (below the logo) and hide the overlay. Idempotent on reload.
-        uploadControl.insertBefore(uploadBtn, fontInput);
-        uploadOverlay.style.display = 'none';
-        setUploadLabel(fontDisplayName(parsed) || file.name);
-
-        buildAxisSliders(parsed);
-        updateFontInstance();
-
-        setTier1Enabled(true);
-        textInput.hidden = false;
-        textInput.style.fontFamily = "'UploadedFont', sans-serif";
-        textInput.style.fontSize = state.fontSize + 'px';
-        applyVariationCSS();
-        textInput.focus();
-        rebuildPattern();
       } catch (err) {
-        font = null;
-        fontInstance = null;
         showFontError();
+        return;
       }
+
+      font = parsed;
+      fontError.hidden = true;
+
+      injectFontFace(file);
+
+      // First load: move the button off the canvas overlay into the left
+      // panel (below the logo) and hide the overlay. Idempotent on reload.
+      uploadControl.insertBefore(uploadBtn, fontInput);
+      uploadOverlay.style.display = 'none';
+      setUploadLabel(fontDisplayName(parsed) || file.name);
+
+      buildAxisSliders(parsed);
+      updateFontInstance();
+
+      setTier1Enabled(true);
+      textInput.hidden = false;
+      textInput.style.fontFamily = "'UploadedFont', sans-serif";
+      textInput.style.fontSize = state.fontSize + 'px';
+      applyVariationCSS();
+      textInput.focus();
+      rebuildPattern();
     }
 
     fontInput.addEventListener('change', async (e) => {
@@ -1069,21 +1077,26 @@
     });
 
     // Drag-and-drop onto the canvas, active only in the placeholder state
-    // (before any font is loaded). Once a font is loaded these are no-ops.
+    // (before any font is loaded). preventDefault always runs first — a
+    // stray drop must never navigate the page away and lose the user's
+    // work. The window-level guards cover drops outside the canvas (e.g.
+    // on the control panel).
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
     const canvasHost = document.getElementById('canvas-host');
     canvasHost.addEventListener('dragover', (e) => {
-      if (font) return;
       e.preventDefault();
+      if (font) return;
       canvasHost.classList.add('drag-active');
     });
     canvasHost.addEventListener('dragleave', () => {
-      if (font) return;
       canvasHost.classList.remove('drag-active');
     });
     canvasHost.addEventListener('drop', (e) => {
-      if (font) return;
       e.preventDefault();
       canvasHost.classList.remove('drag-active');
+      if (font) return;
       loadFontFile(e.dataTransfer.files[0]);
     });
 
@@ -1129,9 +1142,15 @@
 
         const div = document.createElement('div');
         div.className = 'control';
+        // Build the label with DOM APIs only: the axis name and tag come
+        // from the uploaded font file (untrusted), so they must never be
+        // parsed as HTML.
         const lab = document.createElement('label');
-        lab.innerHTML =
-          `${label} <span class="value" id="axis-${tag}-val">${def}</span>`;
+        lab.textContent = `${label} `;
+        const valSpan = document.createElement('span');
+        valSpan.className = 'value';
+        valSpan.textContent = def;
+        lab.appendChild(valSpan);
         const input = document.createElement('input');
         input.type = 'range';
         input.min = min; input.max = max; input.step = step; input.value = def;
@@ -1147,7 +1166,7 @@
         input.addEventListener('input', () => {
           const v = Number(input.value);
           state.axes[tag] = v;
-          document.getElementById(`axis-${tag}-val`).textContent = v;
+          valSpan.textContent = v;
           paintRangeFill(input);
           updateFontInstance();
           applyVariationCSS();
