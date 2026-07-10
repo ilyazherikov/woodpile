@@ -78,7 +78,35 @@
       letter-spacing: 0;
     }
 
-    input[type="range"] { width: 100%; }
+    /* Custom range sliders: blue fill + thumb, plain grey unfilled track,
+       no border/contour. WebKit fill is painted via a JS gradient
+       (paintRangeFill); Firefox uses ::-moz-range-progress. */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: #d8d8d8;   /* unfilled track, no border */
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #007CFF; border: none; cursor: pointer;
+      margin-top: -6px;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #007CFF; border: none; cursor: pointer;
+    }
+    input[type="range"]::-moz-range-track {
+      height: 4px; border-radius: 2px; background: #d8d8d8; border: none;
+    }
+    input[type="range"]::-moz-range-progress {
+      height: 4px; border-radius: 2px; background: #007CFF;
+    }
 
     /* "Save settings" checkbox row */
     .checkbox-control {
@@ -105,13 +133,14 @@
       border-radius: 4px;
       cursor: pointer;
       margin-bottom: 10px;
-      border: 1px solid #070707;
-      background: #070707;
+      border: 1px solid #007CFF;
+      background: #007CFF;
       color: #fff;
     }
     .action.secondary {
       background: #fff;
-      color: #070707;
+      border: 1px solid #007CFF;
+      color: #007CFF;
     }
 
     /* Upload error message */
@@ -155,6 +184,41 @@
       z-index: 2;
     }
     #text-input::selection { background: rgba(7, 7, 7, 0.12); }
+
+    /* Upload button + drop hint, centred on the canvas just below the
+       placeholder text. Shown only while no font is loaded. */
+    #upload-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, 32px);
+      width: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 5;
+    }
+    #upload-overlay #upload-btn { margin-bottom: 0; }
+    #drop-hint {
+      font-size: 13px;
+      color: #bababa;
+      text-align: center;
+    }
+    /* Subtle dashed hint while a font file is dragged over the canvas. */
+    #canvas-host.drag-active {
+      outline: 2px dashed #bababa;
+      outline-offset: -12px;
+    }
+
+    /* Upload button lays out an optional icon beside its label. */
+    #upload-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    #upload-btn svg { flex: none; }
 
     /* Social links overlaid on the canvas area, bottom-right */
     #social-icons {
@@ -265,9 +329,9 @@
     <aside id="panel">
       <img src="woodpile01.svg" alt="logo" id="panel-logo">
 
-      <!-- Tier 0: always active -->
-      <div class="control">
-        <button class="action" id="upload-btn">Upload font</button>
+      <!-- Tier 0: always active. The Upload button lives on the canvas
+           overlay until a font loads, then moves in here below the logo. -->
+      <div class="control" id="upload-control">
         <input type="file" id="font-input" accept=".otf,.ttf" hidden />
         <div class="error" id="font-error" hidden></div>
       </div>
@@ -303,7 +367,7 @@
       </div>
 
       <button class="action" id="expand-btn" disabled>Expand</button>
-      <button class="action secondary" id="clear-btn">Clear Canvas</button>
+      <button class="action secondary" id="clear-btn">Clear canvas</button>
 
       <!-- Tier 0: keep current settings across Clear (always active) -->
       <label class="checkbox-control">
@@ -349,6 +413,17 @@
     <div id="canvas-host">
       <textarea id="text-input" spellcheck="false" autocomplete="off" hidden aria-label="Text input"></textarea>
 
+      <!-- Upload overlay: shown only in the placeholder (no-font) state.
+           Holds the Upload button (moved here from the panel) plus the
+           drag-and-drop hint. Hidden once a font is loaded. -->
+      <div id="upload-overlay">
+        <button class="action" id="upload-btn">
+          <span class="label">Upload font</span>
+          <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v48H48V152a8,8,0,0,0-16,0v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
+        </button>
+        <div id="drop-hint">...or drag and drop the font file here.</div>
+      </div>
+
       <!-- Social links, overlaid bottom-right of the canvas area -->
       <div id="social-icons">
         <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
@@ -386,8 +461,7 @@
     // ---------------- Constants ----------------
     const MARGIN = 80; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
-    const PLACEHOLDER =
-      "Wait for the tea, the fish aren't running!\n(Please upload a font file)";
+    const PLACEHOLDER = "Wait for the tea, the fish aren't running!";
 
     // ---------------- App state ----------------
     const state = {
@@ -870,6 +944,8 @@
     // Control panel wiring
     // =========================================================
     const uploadBtn = document.getElementById('upload-btn');
+    const uploadControl = document.getElementById('upload-control');
+    const uploadOverlay = document.getElementById('upload-overlay');
     const fontInput = document.getElementById('font-input');
     const fontError = document.getElementById('font-error');
     const axesContainer = document.getElementById('axes-container');
@@ -912,13 +988,39 @@
       exportBtn.disabled = !en;
     }
 
+    // ---- Range slider fill --------------------------------------
+    // WebKit has no ::progress pseudo, so paint the filled portion with a
+    // gradient. (Firefox uses ::-moz-range-progress; the gradient is
+    // harmless there.) Call after any value change, user or programmatic.
+    function paintRangeFill(el) {
+      const min = parseFloat(el.min) || 0;
+      const max = parseFloat(el.max) || 100;
+      const pct = ((parseFloat(el.value) - min) / (max - min)) * 100;
+      el.style.background =
+        `linear-gradient(to right, #007CFF 0%, #007CFF ${pct}%,` +
+        ` #d8d8d8 ${pct}%, #d8d8d8 100%)`;
+    }
+
+    // Every static range slider paints itself on input; axis sliders wire
+    // this up as they're created. Initial paint happens on load below.
+    document.querySelectorAll('input[type="range"]').forEach((el) => {
+      el.addEventListener('input', (e) => paintRangeFill(e.target));
+      paintRangeFill(el);
+    });
+
     // =========================================================
     // Font upload (Tier 0)
     // =========================================================
     uploadBtn.addEventListener('click', () => fontInput.click());
 
-    fontInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+    // Show the loaded font name on the button. Only the .label span text
+    // changes; the upload-simple icon (in the HTML) stays to its right.
+    function setUploadLabel(name) {
+      uploadBtn.querySelector('.label').textContent = name;
+    }
+
+    // Shared font-loading path for both the file picker and drag-and-drop.
+    async function loadFontFile(file) {
       if (!file) return;
       const name = file.name.toLowerCase();
       if (!name.endsWith('.otf') && !name.endsWith('.ttf')) {
@@ -936,7 +1038,13 @@
         fontError.hidden = true;
 
         injectFontFace(file);
-        uploadBtn.textContent = fontDisplayName(parsed) || file.name;
+
+        // First load: move the button off the canvas overlay into the left
+        // panel (below the logo) and hide the overlay. Idempotent on reload.
+        uploadControl.insertBefore(uploadBtn, fontInput);
+        uploadOverlay.style.display = 'none';
+        setUploadLabel(fontDisplayName(parsed) || file.name);
+
         buildAxisSliders(parsed);
         updateFontInstance();
 
@@ -952,8 +1060,31 @@
         fontInstance = null;
         showFontError();
       }
+    }
+
+    fontInput.addEventListener('change', async (e) => {
+      await loadFontFile(e.target.files[0]);
       // Allow re-uploading the same file later.
       fontInput.value = '';
+    });
+
+    // Drag-and-drop onto the canvas, active only in the placeholder state
+    // (before any font is loaded). Once a font is loaded these are no-ops.
+    const canvasHost = document.getElementById('canvas-host');
+    canvasHost.addEventListener('dragover', (e) => {
+      if (font) return;
+      e.preventDefault();
+      canvasHost.classList.add('drag-active');
+    });
+    canvasHost.addEventListener('dragleave', () => {
+      if (font) return;
+      canvasHost.classList.remove('drag-active');
+    });
+    canvasHost.addEventListener('drop', (e) => {
+      if (font) return;
+      e.preventDefault();
+      canvasHost.classList.remove('drag-active');
+      loadFontFile(e.dataTransfer.files[0]);
     });
 
     function showFontError() {
@@ -1011,11 +1142,13 @@
         div.appendChild(lab);
         div.appendChild(input);
         axesContainer.appendChild(div);
+        paintRangeFill(input); // initial blue fill for the new slider
 
         input.addEventListener('input', () => {
           const v = Number(input.value);
           state.axes[tag] = v;
           document.getElementById(`axis-${tag}-val`).textContent = v;
+          paintRangeFill(input);
           updateFontInstance();
           applyVariationCSS();
           rebuildPattern();
@@ -1065,6 +1198,7 @@
       }
       fontSizeVal.textContent = `${state.fontSize}px`;
       textInput.style.fontSize = state.fontSize + 'px';
+      paintRangeFill(fontSizeInput); // reflect any clamp snap-back
       rebuildPattern();
     });
 
@@ -1091,6 +1225,7 @@
       }
       lineHeightVal.textContent = `${state.lineHeightPct}%`;
       textInput.style.lineHeight = state.lineHeightPct / 100;
+      paintRangeFill(lineHeightInput); // reflect any clamp snap-back
       rebuildPattern();
     });
 
@@ -1187,11 +1322,11 @@
     });
 
     // =========================================================
-    // Clear canvas. Both branches stop physics and empty the text.
-    //   • Save settings CHECKED  -> partial reset: keep the font and all
-    //     Tier 1 values, return to the text-input state.
-    //   • Save settings UNCHECKED -> full reset: unload the font and
-    //     restore the initial page-load state.
+    // Clear canvas. Both branches stop physics and empty the text; the
+    // font is never unloaded here.
+    //   • Save settings CHECKED  -> keep every Tier 1 value; just clear text.
+    //   • Save settings UNCHECKED -> reset all parameters to defaults, but
+    //     keep the font, @font-face, axis sliders, and the upload button.
     // =========================================================
     clearBtn.addEventListener('click', () => {
       // Both cases: stop physics, remove all bodies, empty the text,
@@ -1203,8 +1338,8 @@
       textInput.value = '';
       lastGoodText = '';
 
-      // ---- Partial reset: keep the loaded font and its settings. ----
-      if (saveSettingsInput.checked && font) {
+      // ---- Save settings CHECKED: clear text only, keep every value. ----
+      if (saveSettingsInput.checked) {
         textInput.hidden = false;
         setTier1Enabled(true);
         setTier2Enabled(false);
@@ -1213,23 +1348,9 @@
         return;
       }
 
-      // ---- Full reset: back to the initial page-load state. ----
-
-      // Unload the font and strip its UI traces.
-      font = null;
-      fontInstance = null;
-      // Release the @font-face blob URL and its injected style element,
-      // and clear any stale variation settings on the overlay.
-      if (fontFaceUrl) {
-        URL.revokeObjectURL(fontFaceUrl);
-        fontFaceUrl = null;
-      }
-      const st = document.getElementById('uploaded-font-face');
-      if (st) st.remove();
-      textInput.style.fontVariationSettings = '';
-      axesContainer.innerHTML = '';
-      state.axes = {};
-      uploadBtn.textContent = 'Upload font';
+      // ---- Save settings UNCHECKED: reset all parameters to defaults. ----
+      // The font, @font-face, axis sliders, and the upload button are left
+      // untouched — the font can only be changed via the Upload button.
 
       // Sliders + font size back to defaults.
       state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.textContent = '150px';
@@ -1239,15 +1360,18 @@
       state.angle = 0; angleInput.value = '0'; angleVal.textContent = '0°';
       textInput.style.fontSize = '150px';
       textInput.style.lineHeight = '1.2';
+      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
+        .forEach(paintRangeFill);
 
       // Physics back to defaults.
       resetPhysicsToDefaults();
 
-      // Hide the overlay and lock every tiered control: only the Upload
-      // font button and Save settings checkbox stay active.
-      textInput.hidden = true;
-      setTier1Enabled(false);
+      // Physics is stopped and Tier 2 is disabled, but the font stays loaded
+      // so Tier 1 controls remain enabled and the user can keep typing.
+      textInput.hidden = false;
+      setTier1Enabled(true);
       setTier2Enabled(false);
+      textInput.focus();
 
       rebuildPattern();
     });
@@ -1274,8 +1398,10 @@
 
     function resetPhysicsToDefaults() {
       Object.entries(PHYSICS_DEFAULTS).forEach(([key, def]) => {
-        document.getElementById(key).value = String(def.value);
+        const el = document.getElementById(key);
+        el.value = String(def.value);
         setPhysicsValue(key, def.value);
+        paintRangeFill(el);
       });
     }
 
