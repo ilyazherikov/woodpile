@@ -376,7 +376,7 @@
       </div>
 
       <button class="action" id="expand-btn" disabled>Expand</button>
-      <button class="action secondary" id="clear-btn">Clear canvas</button>
+      <button class="action secondary" id="clear-btn" disabled>Clear canvas</button>
 
       <!-- Tier 0: keep current settings across Clear (always active) -->
       <label class="checkbox-control">
@@ -1001,6 +1001,14 @@
       exportBtn.disabled = !en;
     }
 
+    // Clear canvas is only meaningful when there's something to clear:
+    // typed text, or physics bodies on the canvas after Expand (text field
+    // is empty then, but the bodies still count).
+    function updateClearEnabled() {
+      const hasText = textInput.value.trim().length > 0;
+      clearBtn.disabled = !(hasText || physicsActive);
+    }
+
     // ---- Range slider fill --------------------------------------
     // WebKit has no ::progress pseudo, so paint the filled portion with a
     // gradient. (Firefox uses ::-moz-range-progress; the gradient is
@@ -1077,6 +1085,7 @@
       applyVariationCSS();
       textInput.focus();
       rebuildPattern();
+      updateClearEnabled(); // font loaded but text still empty -> disabled
     }
 
     fontInput.addEventListener('change', async (e) => {
@@ -1293,6 +1302,7 @@
         textInput.setSelectionRange(pos, pos);
       }
       rebuildPattern();
+      updateClearEnabled();
     });
 
     // =========================================================
@@ -1307,6 +1317,7 @@
       undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = true;
       physicsActive = true;
+      updateClearEnabled(); // bodies exist now, even though text is empty
 
       textInput.hidden = true;
       setTier1Enabled(false);
@@ -1373,6 +1384,7 @@
         setTier2Enabled(false);
         textInput.focus();
         rebuildPattern();
+        updateClearEnabled(); // nothing left to clear -> disabled
         return;
       }
 
@@ -1402,6 +1414,7 @@
       textInput.focus();
 
       rebuildPattern();
+      updateClearEnabled(); // nothing left to clear -> disabled
     });
 
     // =========================================================
@@ -1434,6 +1447,9 @@
     }
 
     resetPhysicsBtn.addEventListener('click', resetPhysicsToDefaults);
+
+    // Initial state: nothing to clear yet (placeholder / empty text).
+    updateClearEnabled();
   </script>
 </body>
 </html>
