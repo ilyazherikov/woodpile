@@ -205,7 +205,9 @@
       color: #bababa;
       text-align: center;
     }
-    /* Subtle dashed hint while a font file is dragged over the canvas. */
+    /* Subtle dashed hint while a font file is dragged over the canvas.
+       Applied from JS via classList in the drag handlers. */
+    /*noinspection CssUnusedSymbol*/
     #canvas-host.drag-active {
       outline: 2px dashed #bababa;
       outline-offset: -12px;
