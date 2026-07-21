@@ -84,9 +84,63 @@
       width: 300px;
       flex: 0 0 300px;
       background: var(--main-bg);
-      padding: var(--sidebar-pad-v) var(--sidebar-pad-r) var(--sidebar-pad-v) var(--sidebar-pad-l);
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
+    /* Scrollable content region; the footer stays pinned below it. */
+    #panel-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: var(--sidebar-pad-v) var(--sidebar-pad-r) var(--sidebar-pad-v) var(--sidebar-pad-l);
+    }
+
+    /* Sidebar footer: social icons + Credits, pinned to the bottom. */
+    #sidebar-footer {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: var(--social-buttons-margin);
+      background: var(--main-bg);
+      padding: 16px var(--sidebar-pad-r) 16px var(--sidebar-pad-l);
+    }
+    .credits-wrap {
+      position: relative;
+      margin-left: auto; /* push Credits to the right of the icons */
+    }
+    #credits-btn {
+      border: none;
+      background: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--link-text);
+    }
+    /* Credits popover: styled like a control card, anchored above the
+       button and kept inside the sidebar. */
+    #credits-popover {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      width: 240px;
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      padding: var(--card-padding);
+      z-index: 20;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--text-main);
+      box-shadow: 0 8px 24px rgba(0, 25, 43, 0.12);
+    }
+    #credits-popover p { margin: 0 0 8px; }
+    #credits-popover p:last-child { margin-bottom: 0; }
+    #credits-popover a { color: var(--link-text); text-decoration: none; }
+    #credits-popover a:hover { text-decoration: underline; }
 
     /* Right: canvas host fills remaining width */
     #canvas-host {
@@ -111,14 +165,80 @@
       margin-bottom: var(--blocks-spacing);
     }
 
-    /* Section / card header (step-icon circle comes with the accordion). */
-    .group-title {
+    /* ---- Two-step accordion cards ---- */
+    /* The strip is positioned relative to the card so it can hang flush to
+       the card's bottom edge when collapsed. */
+    .step-card { position: relative; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: var(--card-blocks-margin);
+    }
+    .step-icon {
+      flex: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--step-icon-bg);
+      color: var(--step-icon-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .step-title {
       font-size: 14px;
       font-weight: 600;
       line-height: 20px;
-      margin: 0 0 var(--section-header-margin);
       color: var(--text-main);
     }
+
+    /* Button group at the bottom of a step card: secondary stacked ABOVE
+       primary, each full width on its own line. */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--card-buttons-margin);
+      margin-top: var(--card-blocks-margin);
+    }
+    .button-group .action {
+      width: 100%;
+      margin-bottom: 0;
+    }
+
+    /* Collapsed step: compact muted bar — hide the body, mute the header,
+       drop the header's bottom margin. Clip to the card radius so the
+       header plate (rounded top) and the go-back strip (rounded bottom)
+       share the card's 20px outer corners with a flush square seam. */
+    .step-card.collapsed { overflow: hidden; }
+    .step-card.collapsed .step-header { margin-bottom: 0; }
+    .step-card.collapsed .step-icon { background: var(--step-icon-bg-disabled); }
+    .step-card.collapsed .step-title { color: var(--text-main-disabled); }
+    .step-card.collapsed .step-body { display: none; }
+
+    /* Blue "go back to text settings" strip: rendered only when step 1 is
+       collapsed, stretched flush to the card's bottom edges. */
+    .step-strip {
+      display: block;
+      width: calc(100% + 2 * var(--card-padding));
+      margin: var(--card-blocks-margin) calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding));
+      border: none;
+      padding: 12px 16px;
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 0 0 var(--radius-card) var(--radius-card);
+    }
+    .step-card:not(.collapsed) .step-strip { display: none; }
 
     /* One slider control: a form-field row (label + number + unit) above
        the slider itself. */
@@ -318,15 +438,11 @@
     }
     #upload-btn svg { flex: none; }
 
-    /* Social links overlaid on the canvas area, bottom-right */
+    /* Social links, now in the sidebar footer. */
     #social-icons {
-      position: absolute;
-      bottom: 80px;
-      right: 80px;
       display: flex;
       flex-direction: row;
-      gap: 10px;
-      z-index: 10;
+      gap: var(--social-buttons-margin);
     }
     /* Inline SVGs coloured via currentColor: solid --social-bg at rest. */
     #icon-behance svg,
@@ -432,6 +548,7 @@
   <div id="app">
     <!-- ====================== Control panel ====================== -->
     <aside id="panel">
+      <div id="panel-body">
       <img src="woodpile01.svg" alt="logo" id="panel-logo">
 
       <!-- Tier 0: always active. The Upload button lives on the canvas
@@ -441,140 +558,174 @@
         <div class="error" id="font-error" hidden></div>
       </div>
 
-      <!-- Tier 1: active after a font is loaded -->
-      <div class="card">
-        <h2 class="group-title">Text</h2>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="fontSize">Font size</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
-              <span class="unit">px</span>
-            </div>
-          </div>
-          <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
+      <!-- ===== Step 1: Set up the font (Tier 1) =====
+           Expanded initially; collapses to a muted bar (with the blue
+           "go back" strip) once Go to physics has run. -->
+      <div class="card step-card" id="step1">
+        <div class="step-header">
+          <span class="step-icon">1</span>
+          <span class="step-title">Set up the font</span>
         </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="lineHeight">Line height</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
-              <span class="unit">%</span>
+        <div class="step-body">
+          <div class="control">
+            <div class="field-row">
+              <label for="fontSize">Font size</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
+                <span class="unit">px</span>
+              </div>
             </div>
+            <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
           </div>
-          <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
-        </div>
 
-        <!-- Variable-font axis sliders are injected here at load time -->
-        <div id="axes-container"></div>
+          <div class="control">
+            <div class="field-row">
+              <label for="lineHeight">Line height</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
+                <span class="unit">%</span>
+              </div>
+            </div>
+            <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
+          </div>
+
+          <!-- Variable-font axis sliders are injected here at load time -->
+          <div id="axes-container"></div>
+
+          <div class="control">
+            <div class="field-row">
+              <label for="thickness">Line thickness</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
+                <span class="unit">px</span>
+              </div>
+            </div>
+            <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <label for="gap">Gap</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
+                <span class="unit">px</span>
+              </div>
+            </div>
+            <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
+          </div>
+
+          <!-- Angle (0 = horizontal, 90 = vertical) -->
+          <div class="control">
+            <div class="field-row">
+              <label for="angle">Angle</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
+                <span class="unit">°</span>
+              </div>
+            </div>
+            <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
+          </div>
+
+          <div class="button-group">
+            <button class="action secondary" id="reset-settings-btn" disabled>Reset settings</button>
+            <button class="action" id="expand-btn" disabled>Go to physics</button>
+          </div>
+        </div>
+        <!-- Only shown while step 1 is collapsed. -->
+        <button class="step-strip" id="back-to-text-btn">Go back to text settings</button>
       </div>
 
-      <div class="card">
-        <h2 class="group-title">Pattern</h2>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="thickness">Line thickness</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
-              <span class="unit">px</span>
-            </div>
-          </div>
-          <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
+      <!-- ===== Step 2: Play with physics (Tier 2) =====
+           Collapsed + inert until Go to physics starts the engine. -->
+      <div class="card step-card collapsed" id="step2">
+        <div class="step-header">
+          <span class="step-icon">2</span>
+          <span class="step-title">Play with physics</span>
         </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="gap">Gap</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
-              <span class="unit">px</span>
+        <div class="step-body">
+          <div class="control">
+            <div class="field-row">
+              <label for="frictionAir">Air resistance</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="frictionAir-val" min="0.2" max="1.0" step="0.01" value="0.40" disabled aria-label="Air resistance value"/>
+              </div>
             </div>
+            <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
           </div>
-          <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
-        </div>
 
-        <!-- Angle (0 = horizontal, 90 = vertical) -->
-        <div class="control">
-          <div class="field-row">
-            <label for="angle">Angle</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
-              <span class="unit">°</span>
+          <div class="control">
+            <div class="field-row">
+              <label for="restitution">Bounciness</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="restitution-val" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness value"/>
+              </div>
             </div>
+            <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
           </div>
-          <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
+
+          <div class="control">
+            <div class="field-row">
+              <label for="friction">Surface friction</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="friction-val" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction value"/>
+              </div>
+            </div>
+            <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <label for="mouseForceScale">Cursor force</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="mouseForceScale-val" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force value"/>
+              </div>
+            </div>
+            <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <label for="spin">Spin</label>
+              <div class="field-value">
+                <input type="number" class="num-input" id="spin-val" min="0.1" max="1" step="0.05" value="0.80" disabled aria-label="Spin value"/>
+              </div>
+            </div>
+            <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
+          </div>
+
+          <div class="button-group">
+            <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
+            <button class="action" id="export-btn" disabled>Export as SVG</button>
+          </div>
         </div>
       </div>
 
-      <button class="action" id="expand-btn" disabled>Expand</button>
+      <!-- Global footer: clear the canvas + keep-settings toggle. -->
       <button class="action secondary" id="clear-btn" disabled>Clear canvas</button>
-
-      <!-- Tier 0: keep current settings across Clear (always active) -->
       <label class="checkbox-control">
         <input type="checkbox" id="save-settings" /> Save settings
       </label>
+      </div><!-- /#panel-body -->
 
-      <!-- ============ Physics section (Tier 2) ============ -->
-      <!-- All controls disabled until Expand starts the engine. -->
-      <div class="card section">
-        <h2 class="group-title">Physics</h2>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="frictionAir">Air resistance</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="frictionAir-val" min="0.2" max="1.0" step="0.01" value="0.40" disabled aria-label="Air resistance value"/>
-            </div>
-          </div>
-          <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
+      <!-- ===== Sidebar footer: social icons + Credits ===== -->
+      <div id="sidebar-footer">
+        <div id="social-icons">
+          <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
+            <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
+            <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
+          </a>
         </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="restitution">Bounciness</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="restitution-val" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness value"/>
-            </div>
+        <div class="credits-wrap">
+          <button type="button" id="credits-btn">Credits</button>
+          <div id="credits-popover" hidden>
+            <p>UX/UI: <a href="https://www.linkedin.com/in/bmbl/" target="_blank" rel="noopener">Artyom Rusakov</a></p>
+            <p>Valuable feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
+            <p>Idea: Ilya Zherikov, coding: Claude Code</p>
           </div>
-          <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
-        </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="friction">Surface friction</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="friction-val" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction value"/>
-            </div>
-          </div>
-          <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
-        </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="mouseForceScale">Cursor force</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="mouseForceScale-val" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force value"/>
-            </div>
-          </div>
-          <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
-        </div>
-
-        <div class="control">
-          <div class="field-row">
-            <label for="spin">Spin</label>
-            <div class="field-value">
-              <input type="number" class="num-input" id="spin-val" min="0.1" max="1" step="0.05" value="0.80" disabled aria-label="Spin value"/>
-            </div>
-          </div>
-          <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
         </div>
       </div>
-
-      <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
-      <button class="action secondary" id="export-btn" disabled>Export as SVG</button>
     </aside>
 
     <!-- ====================== Canvas host ====================== -->
@@ -592,15 +743,6 @@
         <div id="drop-hint">...or drag and drop the font file here.</div>
       </div>
 
-      <!-- Social links, overlaid bottom-right of the canvas area -->
-      <div id="social-icons">
-        <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
-          <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
-        </a>
-        <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
-          <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
-        </a>
-      </div>
     </div>
   </div>
 
@@ -1135,6 +1277,7 @@
     const angleVal = document.getElementById('angle-val');
 
     const expandBtn = document.getElementById('expand-btn');
+    const resetSettingsBtn = document.getElementById('reset-settings-btn');
     const clearBtn = document.getElementById('clear-btn');
     const saveSettingsInput = document.getElementById('save-settings');
     const exportBtn = document.getElementById('export-btn');
@@ -1143,11 +1286,25 @@
       document.getElementById(key)
     );
 
+    // Accordion step-cards.
+    const step1Card = document.getElementById('step1');
+    const step2Card = document.getElementById('step2');
+    const backToTextBtn = document.getElementById('back-to-text-btn');
+
+    // Show exactly one step expanded; the other collapses to its bar.
+    //   1 -> Step 1 (Set up the font) active, Step 2 inert muted bar.
+    //   2 -> Step 1 collapsed with the blue "go back" strip, Step 2 active.
+    function showStep(n) {
+      step1Card.classList.toggle('collapsed', n !== 1);
+      step2Card.classList.toggle('collapsed', n !== 2);
+    }
+
     // ---- Tier enable/disable ----------------------------------
     // Tier 1 includes the dynamically-created axis sliders.
     function tier1Controls() {
       return [
-        fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput, expandBtn,
+        fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput,
+        resetSettingsBtn, expandBtn,
         ...axesContainer.querySelectorAll('.axis-input'),
       ];
     }
@@ -1441,6 +1598,38 @@
       textInput.style.fontVariationSettings = parts.join(', ');
     }
 
+    // Reset every variable-font axis slider (and its number field) back to
+    // the font's default, then rebuild the variation instance + caret CSS.
+    // No-op for static fonts.
+    function resetAxesToDefaults() {
+      if (!font || !font.variationAxes) return;
+      for (const [tag, ax] of Object.entries(font.variationAxes)) {
+        state.axes[tag] = ax.default;
+        const slider = document.getElementById(`axis-${tag}`);
+        const numEl = document.getElementById(`axis-${tag}-val`);
+        if (slider) { slider.value = ax.default; paintRangeFill(slider); }
+        if (numEl) numEl.value = ax.default;
+      }
+      updateFontInstance();
+      applyVariationCSS();
+    }
+
+    // Reset the five non-axis Tier-1 sliders (font size, line height,
+    // thickness, gap, angle) — plus their number fields and the caret's
+    // font metrics — to defaults. Shared by "Reset settings" and the
+    // Clear-to-defaults path. Does NOT touch axes, text, or physics.
+    function resetTier1Params() {
+      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.value = '150';
+      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.value = '120';
+      state.thickness = 3; thicknessInput.value = '3'; thicknessVal.value = '3';
+      state.gap = 3; gapInput.value = '3'; gapVal.value = '3';
+      state.angle = 0; angleInput.value = '0'; angleVal.value = '0';
+      textInput.style.fontSize = '150px';
+      textInput.style.lineHeight = '1.2';
+      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
+        .forEach(paintRangeFill);
+    }
+
     // =========================================================
     // Tier 1 sliders
     // =========================================================
@@ -1540,6 +1729,8 @@
     // =========================================================
     // Expand: glyph outlines -> physics bodies
     // =========================================================
+    // "Go to physics" (formerly Expand): outline the glyphs into bodies and
+    // hand control to Step 2.
     expandBtn.addEventListener('click', () => {
       if (state.expanded || !font) return;
       rebuildPattern();
@@ -1554,6 +1745,37 @@
       textInput.hidden = true;
       setTier1Enabled(false);
       setTier2Enabled(true);
+      showStep(2); // collapse Step 1 (with go-back strip), open Step 2
+    });
+
+    // "Go back to text settings" (blue strip on the collapsed Step 1):
+    // undo the expand. The typed text and Tier-1 params were never touched
+    // by Expand — the textarea was only hidden — so we just tear the bodies
+    // down, un-hide, re-enable, and return to Step 1.
+    backToTextBtn.addEventListener('click', () => {
+      if (!state.expanded) return;
+      destroyPhysics();
+      physicsActive = false;
+      state.expanded = false;
+      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
+
+      textInput.hidden = false;
+      setTier1Enabled(true);
+      setTier2Enabled(false);
+      showStep(1);
+
+      rebuildPattern(); // redraw the (still-intact) pattern from the text
+      updateClearEnabled();
+      textInput.focus();
+    });
+
+    // "Reset settings" (Step 1): restore every Tier-1 parameter — font size,
+    // line height, thickness, gap, angle, and the variable-font axes — to
+    // their defaults. The font stays loaded and the typed text is untouched.
+    resetSettingsBtn.addEventListener('click', () => {
+      resetTier1Params();
+      resetAxesToDefaults();
+      rebuildPattern();
     });
 
     // =========================================================
@@ -1614,6 +1836,7 @@
         textInput.hidden = false;
         setTier1Enabled(true);
         setTier2Enabled(false);
+        showStep(1); // back to the initial post-font-load state
         textInput.focus();
         rebuildPattern();
         updateClearEnabled(); // nothing left to clear -> disabled
@@ -1624,16 +1847,8 @@
       // The font, @font-face, axis sliders, and the upload button are left
       // untouched — the font can only be changed via the Upload button.
 
-      // Sliders + font size back to defaults.
-      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.value = '150';
-      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.value = '120';
-      state.thickness = 3; thicknessInput.value = '3'; thicknessVal.value = '3';
-      state.gap = 3; gapInput.value = '3'; gapVal.value = '3';
-      state.angle = 0; angleInput.value = '0'; angleVal.value = '0';
-      textInput.style.fontSize = '150px';
-      textInput.style.lineHeight = '1.2';
-      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
-        .forEach(paintRangeFill);
+      // Tier-1 sliders + font size back to defaults (shared reset logic).
+      resetTier1Params();
 
       // Physics back to defaults.
       resetPhysicsToDefaults();
@@ -1643,6 +1858,7 @@
       textInput.hidden = false;
       setTier1Enabled(true);
       setTier2Enabled(false);
+      showStep(1); // back to the initial post-font-load state
       textInput.focus();
 
       rebuildPattern();
@@ -1680,7 +1896,36 @@
 
     resetPhysicsBtn.addEventListener('click', resetPhysicsToDefaults);
 
-    // Initial state: nothing to clear yet (placeholder / empty text).
+    // =========================================================
+    // Credits popover — opens above the footer button; any click outside
+    // dismisses it via a one-shot document listener.
+    // =========================================================
+    const creditsBtn = document.getElementById('credits-btn');
+    const creditsPopover = document.getElementById('credits-popover');
+
+    function closeCredits() {
+      creditsPopover.hidden = true;
+      document.removeEventListener('click', closeCredits);
+    }
+
+    creditsBtn.addEventListener('click', (e) => {
+      // Keep the opening click from bubbling to the document listener we're
+      // about to add (which would immediately close the popover).
+      e.stopPropagation();
+      if (creditsPopover.hidden) {
+        creditsPopover.hidden = false;
+        document.addEventListener('click', closeCredits);
+      } else {
+        closeCredits();
+      }
+    });
+    // Clicks inside the popover (including its links) don't reach the
+    // document listener, so the popover stays open while a link opens.
+    creditsPopover.addEventListener('click', (e) => e.stopPropagation());
+
+    // Initial state: Step 1 expanded, Step 2 collapsed inert; nothing to
+    // clear yet (placeholder / empty text).
+    showStep(1);
     updateClearEnabled();
   </script>
 </body>
