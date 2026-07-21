@@ -41,10 +41,42 @@
       --step-icon-bg: #00192b;
       --step-icon-bg-disabled: #00192b99;
       --step-icon-text: #ffffff;
+      /* button primary states */
+      --btn-primary-bg-hover: #0882f7;
+      --btn-primary-bg-pressed: #0882f7;
+      --btn-primary-text-pressed: #ebebeb;
+      --btn-primary-divider: #ffffffcc;
+      /* button secondary states */
+      --btn-secondary-text-hover: #0972d7;
+      --btn-secondary-border-hover: #0972d7;
+      --btn-secondary-text-pressed: #0a63b8;
+      --btn-secondary-border-pressed: #0a63b8;
+      /* number input states */
+      --input-unit-hover: #7bb1ea;
+      --input-border-hover: #b9d9fe;
+      --input-bg-active: #ffffff;
+      --input-border-active: #a5cffd;
+      --input-unit-active: #7bb1ea;
+      /* slider hover */
+      --slider-track-hover: #7cb9fe;
+      /* social button states */
+      --social-bg-hover: #072840;
+      --social-bg-pressed: #00192b;
+      /* link button (Credits) states */
+      --link-text-hover: #0972d7;
+      --link-text-pressed: #0a63b8;
+      --link-bg-hover: #edf5fc;
+      --link-bg-pressed: #e5f0fb;
+      /* elevation */
+      --shadow-color: #00192b1f;    /* 12% of #00192b */
+      /* canvas */
+      --canvas-bg: #f5f5f5;
+      --canvas-text: #000000;
       /* radii */
       --radius-card: 20px;
       --radius-button: 8px;
       --radius-input: 4px;
+      --radius-sidebar: 28px;
       /* spacing */
       --sidebar-pad-l: 16px;
       --sidebar-pad-v: 32px;
@@ -61,6 +93,11 @@
       --input-pad-h: 8px;
       --input-pad-v: 4px;
       --social-buttons-margin: 12px;
+      --canvas-padding: 48px;
+      --link-button-pad-h: 12px;
+      --link-button-pad-v: 8px;
+      --btn-regular-pad-h: 16px;
+      --btn-regular-pad-v: 12px;
     }
 
     html, body {
@@ -135,7 +172,7 @@
       font-weight: 500;
       line-height: 18px;
       color: var(--text-main);
-      box-shadow: 0 8px 24px rgba(0, 25, 43, 0.12);
+      box-shadow: 0 8px 24px var(--shadow-color);
     }
     #credits-popover p { margin: 0 0 8px; }
     #credits-popover p:last-child { margin-bottom: 0; }
@@ -324,20 +361,6 @@
     input[type="range"]::-moz-range-progress {
       height: 4px; border-radius: 2px; background: var(--slider-filled);
     }
-
-    /* "Save settings" checkbox row */
-    .checkbox-control {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: var(--blocks-spacing);
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 18px;
-      color: var(--input-label);
-      cursor: pointer;
-    }
-    .checkbox-control input { cursor: pointer; accent-color: var(--accent); }
 
 
     /* Action buttons */
@@ -704,11 +727,6 @@
         </div>
       </div>
 
-      <!-- Global footer: clear the canvas + keep-settings toggle. -->
-      <button class="action secondary" id="clear-btn" disabled>Clear canvas</button>
-      <label class="checkbox-control">
-        <input type="checkbox" id="save-settings" /> Save settings
-      </label>
       </div><!-- /#panel-body -->
 
       <!-- ===== Sidebar footer: social icons + Credits ===== -->
@@ -726,7 +744,7 @@
           <div id="credits-popover" hidden>
             <p>UX/UI: <a href="https://www.linkedin.com/in/bmbl/" target="_blank" rel="noopener">Artyom Rusakov</a></p>
             <p>Valuable feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
-            <p>Idea: Ilya Zherikov, coding: Claude Code</p>
+            <p>Idea: Ilya Zherikov, coding: <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
           </div>
         </div>
       </div>
@@ -777,7 +795,7 @@
     const fontkit = fontkitNS.default || fontkitNS;
 
     // ---------------- Constants ----------------
-    const MARGIN = 80; // padding around the text block, all sides
+    const MARGIN = 48; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
     const PLACEHOLDER = "Wait for the tea, the fish aren't running!";
 
@@ -1282,8 +1300,6 @@
 
     const expandBtn = document.getElementById('expand-btn');
     const resetSettingsBtn = document.getElementById('reset-settings-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const saveSettingsInput = document.getElementById('save-settings');
     const exportBtn = document.getElementById('export-btn');
     const resetPhysicsBtn = document.getElementById('reset-physics-btn');
     const physicsInputs = Object.keys(PHYSICS_DEFAULTS).map((key) =>
@@ -1321,14 +1337,6 @@
       resetPhysicsBtn.disabled = !en;
       exportBtn.disabled = !en;
       syncNumberDisabled();
-    }
-
-    // Clear canvas is only meaningful when there's something to clear:
-    // typed text, or physics bodies on the canvas after Expand (text field
-    // is empty then, but the bodies still count).
-    function updateClearEnabled() {
-      const hasText = textInput.value.trim().length > 0;
-      clearBtn.disabled = !(hasText || physicsActive);
     }
 
     // ---- Range slider fill --------------------------------------
@@ -1436,6 +1444,12 @@
         return;
       }
 
+      // If physics is running (we're on Step 2), roll the app back to Step 1
+      // before applying the new font — same teardown as "Go back to text
+      // settings" — so a font swap never leaves the app mid-physics. Done
+      // only after a clean parse, so a corrupt file leaves everything intact.
+      returnToStep1();
+
       font = parsed;
       fontError.hidden = true;
 
@@ -1457,7 +1471,6 @@
       applyVariationCSS();
       textInput.focus();
       rebuildPattern();
-      updateClearEnabled(); // font loaded but text still empty -> disabled
     }
 
     fontInput.addEventListener('change', async (e) => {
@@ -1727,7 +1740,6 @@
         textInput.setSelectionRange(pos, pos);
       }
       rebuildPattern();
-      updateClearEnabled();
     });
 
     // =========================================================
@@ -1744,7 +1756,6 @@
       undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = true;
       physicsActive = true;
-      updateClearEnabled(); // bodies exist now, even though text is empty
 
       textInput.hidden = true;
       setTier1Enabled(false);
@@ -1752,12 +1763,14 @@
       showStep(2); // collapse Step 1 (with go-back strip), open Step 2
     });
 
-    // "Go back to text settings" (blue strip on the collapsed Step 1):
-    // undo the expand. The typed text and Tier-1 params were never touched
-    // by Expand — the textarea was only hidden — so we just tear the bodies
-    // down, un-hide, re-enable, and return to Step 1.
-    backToTextBtn.addEventListener('click', () => {
-      if (!state.expanded) return;
+    // Undo the expand and return to Step 1: tear the physics bodies down,
+    // un-hide the textarea, re-enable Tier 1, and swap the accordion back.
+    // The typed text and Tier-1 params were never touched by Expand (the
+    // textarea was only hidden), so they survive. No-op if not expanded.
+    // Shared by the "Go back to text settings" strip and by loadFontFile
+    // (loading a new font mid-physics rolls back here first).
+    function returnToStep1() {
+      if (!state.expanded && !physicsActive) return;
       destroyPhysics();
       physicsActive = false;
       state.expanded = false;
@@ -1767,9 +1780,13 @@
       setTier1Enabled(true);
       setTier2Enabled(false);
       showStep(1);
+    }
 
+    // "Go back to text settings" (blue strip on the collapsed Step 1).
+    backToTextBtn.addEventListener('click', () => {
+      if (!state.expanded) return;
+      returnToStep1();
       rebuildPattern(); // redraw the (still-intact) pattern from the text
-      updateClearEnabled();
       textInput.focus();
     });
 
@@ -1816,57 +1833,6 @@
       a.download = 'pattern.svg';
       a.click();
       URL.revokeObjectURL(url);
-    });
-
-    // =========================================================
-    // Clear canvas. Both branches stop physics and empty the text; the
-    // font is never unloaded here.
-    //   • Save settings CHECKED  -> keep every Tier 1 value; just clear text.
-    //   • Save settings UNCHECKED -> reset all parameters to defaults, but
-    //     keep the font, @font-face, axis sliders, and the upload button.
-    // =========================================================
-    clearBtn.addEventListener('click', () => {
-      // Both cases: stop physics, remove all bodies, empty the text,
-      // and clear the undo/redo history.
-      physicsActive = false;
-      destroyPhysics();
-      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
-      state.expanded = false;
-      textInput.value = '';
-      lastGoodText = '';
-
-      // ---- Save settings CHECKED: clear text only, keep every value. ----
-      if (saveSettingsInput.checked) {
-        textInput.hidden = false;
-        setTier1Enabled(true);
-        setTier2Enabled(false);
-        showStep(1); // back to the initial post-font-load state
-        textInput.focus();
-        rebuildPattern();
-        updateClearEnabled(); // nothing left to clear -> disabled
-        return;
-      }
-
-      // ---- Save settings UNCHECKED: reset all parameters to defaults. ----
-      // The font, @font-face, axis sliders, and the upload button are left
-      // untouched — the font can only be changed via the Upload button.
-
-      // Tier-1 sliders + font size back to defaults (shared reset logic).
-      resetTier1Params();
-
-      // Physics back to defaults.
-      resetPhysicsToDefaults();
-
-      // Physics is stopped and Tier 2 is disabled, but the font stays loaded
-      // so Tier 1 controls remain enabled and the user can keep typing.
-      textInput.hidden = false;
-      setTier1Enabled(true);
-      setTier2Enabled(false);
-      showStep(1); // back to the initial post-font-load state
-      textInput.focus();
-
-      rebuildPattern();
-      updateClearEnabled(); // nothing left to clear -> disabled
     });
 
     // =========================================================
@@ -1927,10 +1893,8 @@
     // document listener, so the popover stays open while a link opens.
     creditsPopover.addEventListener('click', (e) => e.stopPropagation());
 
-    // Initial state: Step 1 expanded, Step 2 collapsed inert; nothing to
-    // clear yet (placeholder / empty text).
+    // Initial state: Step 1 expanded, Step 2 collapsed inert.
     showStep(1);
-    updateClearEnabled();
   </script>
 </body>
 </html>
