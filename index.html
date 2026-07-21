@@ -225,7 +225,10 @@
     .step-strip {
       display: block;
       width: calc(100% + 2 * var(--card-padding));
-      margin: var(--card-blocks-margin) calc(-1 * var(--card-padding)) calc(-1 * var(--card-padding));
+      margin-left: calc(-1 * var(--card-padding));
+      margin-right: calc(-1 * var(--card-padding));
+      margin-top: var(--card-blocks-margin);
+      margin-bottom: calc(-1 * var(--card-padding));
       border: none;
       padding: 12px 16px;
       background: var(--btn-primary-bg);
@@ -236,7 +239,8 @@
       line-height: 18px;
       text-align: center;
       cursor: pointer;
-      border-radius: 0 0 var(--radius-card) var(--radius-card);
+      /* no own border-radius — the card's overflow:hidden + radius clips it */
+      border-radius: 0;
     }
     .step-card:not(.collapsed) .step-strip { display: none; }
 
