@@ -18,7 +18,8 @@
     /* ---- Design tokens (single source of truth) ---- */
     :root {
       /* colors */
-      --main-bg: #ffffff;
+      --main-bg: #f5f5f5;           /* page background (grey) */
+      --sidebar-bg: #ffffff;        /* floating sidebar card */
       --text-main: #00192b;
       --text-main-disabled: #00192bb2;
       --accent: #148bfd;            /* interface accent */
@@ -98,6 +99,14 @@
       --link-button-pad-v: 8px;
       --btn-regular-pad-h: 16px;
       --btn-regular-pad-v: 12px;
+      /* empty state */
+      --empty-state-margin: 24px;         /* caption -> button */
+      --empty-state-margin-button: 8px;   /* button -> drop hint */
+      /* combined button paddings */
+      --btn-combined-pad-l: 16px;
+      --btn-combined-pad-r: 12px;
+      --btn-combined-pad-v: 12px;
+      --btn-combined-divider-pad-l: 4px;
     }
 
     html, body {
@@ -108,22 +117,31 @@
       color: var(--text-main);
     }
 
-    /* Split layout, full viewport height */
+    /* Split layout, full viewport height. Grey page background: the sidebar
+       is a white card floating above it, the canvas sits on the grey too. */
     #app {
       display: flex;
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      background: var(--main-bg);
     }
 
-    /* Left: fixed-width control panel */
+    /* Left: fixed-width control panel, a white card floating on the grey
+       page. Rounded on its right corners only, flush to the other edges,
+       with a shadow falling to the right. Raised above the canvas so the
+       shadow shows. */
     #panel {
       width: 300px;
       flex: 0 0 300px;
-      background: var(--main-bg);
+      background: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      position: relative;
+      z-index: 1;
+      border-radius: 0 var(--radius-sidebar) var(--radius-sidebar) 0;
+      box-shadow: 4px 0 24px var(--shadow-color);
     }
     /* Scrollable content region; the footer stays pinned below it. */
     #panel-body {
@@ -139,7 +157,7 @@
       display: flex;
       align-items: center;
       gap: var(--social-buttons-margin);
-      background: var(--main-bg);
+      background: var(--sidebar-bg);
       padding: 16px var(--sidebar-pad-r) 16px var(--sidebar-pad-l);
     }
     .credits-wrap {
@@ -252,6 +270,9 @@
        header plate (rounded top) and the go-back strip (rounded bottom)
        share the card's 20px outer corners with a flush square seam. */
     .step-card.collapsed { overflow: hidden; }
+    /* Header shares the light-blue card surface — no white plate — so the
+       card's rounded top corners show through instead of being covered. */
+    .step-card.collapsed .step-header { background: transparent; }
     .step-card.collapsed .step-header { margin-bottom: 0; }
     .step-card.collapsed .step-icon { background: var(--step-icon-bg-disabled); }
     .step-card.collapsed .step-title { color: var(--text-main-disabled); }
@@ -426,27 +447,42 @@
     }
     #text-input::selection { background: rgba(7, 7, 7, 0.12); }
 
-    /* Upload button + drop hint, centred on the canvas just below the
-       placeholder text. Shown only while no font is loaded. */
-    #upload-overlay {
+    /* Empty state: one centred block (caption + upload button + drop hint)
+       shown on the canvas while no font is loaded. Centred both axes.
+       The container is transparent to pointer/drag events so drag-and-drop
+       still reaches #canvas-host; only the button re-enables them. */
+    #empty-state {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, 32px);
-      width: 240px;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
       z-index: 5;
+      pointer-events: none;
+      box-sizing: border-box;
+      padding: var(--canvas-padding);
+      text-align: center;
     }
-    #upload-overlay #upload-btn { margin-bottom: 0; }
+    /* Empty Caption style: Inter 500 20/24. */
+    #empty-caption {
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 24px;
+      color: var(--text-main-disabled);
+      margin-bottom: var(--empty-state-margin);
+    }
+    #empty-state #upload-btn {
+      width: 264px;
+      margin-bottom: var(--empty-state-margin-button);
+      pointer-events: auto;
+    }
+    /* Subcaption style: Inter 500 12/16. */
     #drop-hint {
       font-size: 12px;
       font-weight: 500;
       line-height: 16px;
       color: var(--text-main-disabled);
-      text-align: center;
     }
     /* Subtle dashed hint while a font file is dragged over the canvas.
        Applied from JS via classList in the drag handlers. */
@@ -754,15 +790,17 @@
     <div id="canvas-host">
       <textarea id="text-input" spellcheck="false" autocomplete="off" hidden aria-label="Text input"></textarea>
 
-      <!-- Upload overlay: shown only in the placeholder (no-font) state.
-           Holds the Upload button (moved here from the panel) plus the
-           drag-and-drop hint. Hidden once a font is loaded. -->
-      <div id="upload-overlay">
+      <!-- Empty state: shown only in the no-font state. One centred block
+           with the caption, the Upload button (moved into the panel once a
+           font loads), and the drag-and-drop hint. Hidden once a font is
+           loaded. -->
+      <div id="empty-state">
+        <div id="empty-caption">Wait for the tea, the fish aren't running!</div>
         <button class="action" id="upload-btn">
           <span class="label">Upload font</span>
           <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>
         </button>
-        <div id="drop-hint">...or drag and drop the font file here.</div>
+        <div id="drop-hint">...or drag and drop a font file here (.otf or .ttf)</div>
       </div>
 
     </div>
@@ -797,7 +835,6 @@
     // ---------------- Constants ----------------
     const MARGIN = 48; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
-    const PLACEHOLDER = "Wait for the tea, the fish aren't running!";
 
     // ---------------- App state ----------------
     const state = {
@@ -1197,14 +1234,8 @@
         p.background('#F5F5F5');
 
         if (!font) {
-          // Placeholder until a font is uploaded.
-          p.push();
-          p.fill('#bababa');
-          p.textAlign(p.CENTER, p.CENTER);
-          p.textSize(22);
-          p.textFont('sans-serif');
-          p.text(PLACEHOLDER, p.width / 2, p.height / 2);
-          p.pop();
+          // No font yet: the empty-state caption/button/hint live in the
+          // HTML overlay, so the canvas just shows its plain background.
           return;
         }
 
@@ -1281,7 +1312,7 @@
     // =========================================================
     const uploadBtn = document.getElementById('upload-btn');
     const uploadControl = document.getElementById('upload-control');
-    const uploadOverlay = document.getElementById('upload-overlay');
+    const uploadOverlay = document.getElementById('empty-state');
     const fontInput = document.getElementById('font-input');
     const fontError = document.getElementById('font-error');
     const axesContainer = document.getElementById('axes-container');
