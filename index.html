@@ -265,40 +265,55 @@
       margin-bottom: 0;
     }
 
-    /* Collapsed step: compact muted bar — hide the body, mute the header,
-       drop the header's bottom margin. Clip to the card radius so the
-       header plate (rounded top) and the go-back strip (rounded bottom)
-       share the card's 20px outer corners with a flush square seam. */
-    .step-card.collapsed { overflow: hidden; }
-    /* Header shares the light-blue card surface — no white plate — so the
-       card's rounded top corners show through instead of being covered. */
-    .step-card.collapsed .step-header { background: transparent; }
-    .step-card.collapsed .step-header { margin-bottom: 0; }
+    /* Collapsed step 1: two stacked rounded layers, matching the Figma
+       "button subcard" + "Step=1, State=Disabled" card. Both layers sit in
+       normal flow; the grey plate has a -20px bottom margin so it overlaps
+       the blue button below it by 20px, and the blue button has a 28px top
+       padding — so the label lands 28 - 20 = 8px below the plate's bottom
+       edge (Figma subcard padding-t 28 / padding-b 8). `isolation` scopes
+       the z-index so the grey plate (z 2) stays above the blue (z 1). The
+       card itself is a bare container. */
+    .step-card.collapsed {
+      background: transparent;
+      padding: 0;
+      isolation: isolate;
+    }
+    .step-card.collapsed .step-body { display: none; }
     .step-card.collapsed .step-icon { background: var(--step-icon-bg-disabled); }
     .step-card.collapsed .step-title { color: var(--text-main-disabled); }
-    .step-card.collapsed .step-body { display: none; }
 
-    /* Blue "go back to text settings" strip: rendered only when step 1 is
-       collapsed, stretched flush to the card's bottom edges. */
-    .step-strip {
+    /* Grey header plate: normal flow, fully rounded, overlapping the blue
+       layer below it by 20px and painted on top of it. */
+    .step-card.collapsed .step-header {
+      position: relative;
+      z-index: 2;
+      margin: 0 0 -20px;
+      padding: var(--card-padding);
+      background: var(--card-bg-disabled);
+      border-radius: var(--radius-card);
+    }
+
+    /* Blue "go back to text settings" button: the outer layer below the
+       plate. Figma subcard paddings — top 28, bottom 8, sides 16 — so the
+       label sits 8px below the plate; only the bottom corners are rounded
+       (the square top is tucked under the plate). */
+    .step-card.collapsed .step-strip {
       display: block;
-      width: calc(100% + 2 * var(--card-padding));
-      margin-left: calc(-1 * var(--card-padding));
-      margin-right: calc(-1 * var(--card-padding));
-      margin-top: var(--card-blocks-margin);
-      margin-bottom: calc(-1 * var(--card-padding));
-      border: none;
-      padding: 12px 16px;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      margin: 0;
+      padding: 28px 16px 8px;
       background: var(--btn-primary-bg);
       color: var(--btn-primary-text);
+      border: none;
+      border-radius: 0 0 var(--radius-card) var(--radius-card);
       font-family: inherit;
       font-size: 14px;
       font-weight: 500;
       line-height: 18px;
       text-align: center;
       cursor: pointer;
-      /* no own border-radius — the card's overflow:hidden + radius clips it */
-      border-radius: 0;
     }
     .step-card:not(.collapsed) .step-strip { display: none; }
 
