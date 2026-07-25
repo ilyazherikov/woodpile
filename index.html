@@ -20,15 +20,15 @@
       /* colors */
       --main-bg: #f5f5f5;           /* page background (grey) */
       --sidebar-bg: #ffffff;        /* floating sidebar card */
-      --text-main: #00192b;
-      --text-main-disabled: #00192bb2;
+      --text-main: #000c14;
+      --text-main-disabled: #000c14b2;
       --accent: #148bfd;            /* interface accent */
       --card-bg: #f6fafe;
       --card-bg-disabled: #f4f7fb;
       --input-bg: #ffffffe5;
       --input-border: #d7e9fe;
-      --input-label: #00192b;
-      --input-text: #00192b;
+      --input-label: #000c14;
+      --input-text: #000c14;
       --input-unit: #96c1ee;
       --slider-track: #aad2ff;
       --slider-filled: #148bfd;
@@ -37,10 +37,10 @@
       --btn-primary-text: #ffffff;
       --btn-secondary-text: #148bfd;
       --btn-secondary-border: #148bfd;
-      --social-bg: #00192b;
+      --social-bg: #000c14;
       --link-text: #148bfd;
-      --step-icon-bg: #00192b;
-      --step-icon-bg-disabled: #00192b99;
+      --step-icon-bg: #000c14;
+      --step-icon-bg-disabled: #000c1499;
       --step-icon-text: #ffffff;
       /* button primary states */
       --btn-primary-bg-hover: #0882f7;
@@ -61,15 +61,15 @@
       /* slider hover */
       --slider-track-hover: #7cb9fe;
       /* social button states */
-      --social-bg-hover: #072840;
-      --social-bg-pressed: #00192b;
+      --social-bg-hover: #011e32;
+      --social-bg-pressed: #000c14;
       /* link button (Credits) states */
       --link-text-hover: #0972d7;
       --link-text-pressed: #0a63b8;
       --link-bg-hover: #edf5fc;
       --link-bg-pressed: #e5f0fb;
       /* elevation */
-      --shadow-color: #00192b1f;    /* 12% of #00192b */
+      --shadow-color: #000c141f;    /* 12% of #000c14 */
       /* canvas */
       --canvas-bg: #f5f5f5;
       --canvas-text: #000000;
@@ -79,9 +79,8 @@
       --radius-input: 4px;
       --radius-sidebar: 28px;
       /* spacing */
-      --sidebar-pad-l: 16px;
+      --sidebar-pad-h: 16px;
       --sidebar-pad-v: 32px;
-      --sidebar-pad-r: 24px;
       --blocks-spacing: 24px;
       --section-header-margin: 8px;
       --card-padding: 16px;
@@ -94,7 +93,10 @@
       --input-pad-h: 8px;
       --input-pad-v: 4px;
       --social-buttons-margin: 12px;
-      --canvas-padding: 48px;
+      --canvas-padding: 48px;   /* single source of truth: drives BOTH the
+                                   #text-input padding and the JS canvas text
+                                   margin (getCanvasPadding), so they can't
+                                   desync */
       --link-button-pad-h: 12px;
       --link-button-pad-v: 8px;
       --btn-regular-pad-h: 16px;
@@ -140,15 +142,13 @@
       overflow: hidden;
       position: relative;
       z-index: 1;
-      border-radius: 0 var(--radius-sidebar) var(--radius-sidebar) 0;
-      box-shadow: 4px 0 24px var(--shadow-color);
     }
     /* Scrollable content region; the footer stays pinned below it. */
     #panel-body {
       flex: 1 1 auto;
       min-height: 0;
       overflow-y: auto;
-      padding: var(--sidebar-pad-v) var(--sidebar-pad-r) var(--sidebar-pad-v) var(--sidebar-pad-l);
+      padding: var(--sidebar-pad-v) var(--sidebar-pad-h);
     }
 
     /* Sidebar footer: social icons + Credits, pinned to the bottom. */
@@ -158,7 +158,7 @@
       align-items: center;
       gap: var(--social-buttons-margin);
       background: var(--sidebar-bg);
-      padding: 16px var(--sidebar-pad-r) 16px var(--sidebar-pad-l);
+      padding: 16px var(--sidebar-pad-h);
     }
     .credits-wrap {
       position: relative;
@@ -210,6 +210,10 @@
       display: block;
       margin-bottom: var(--blocks-spacing);
     }
+
+    /* Inline logos paint in the dark token via currentColor, so changing
+       --social-bg repaints them automatically. */
+    #panel-logo, #mobile-logo { color: var(--social-bg); }
 
     /* Card grouping for a set of related controls. Purely visual — no
        collapse/step logic yet (that's the later accordion pass). */
@@ -321,6 +325,11 @@
        the slider itself. */
     .control { margin-bottom: var(--card-row-margin); }
     .control:last-child { margin-bottom: 0; }
+
+    /* Variable-font axis sliders are injected here. Separate the last axis
+       from the next control; collapse entirely for static fonts (no axes). */
+    #axes-container { margin-bottom: var(--card-row-margin); }
+    #axes-container:empty { display: none; margin-bottom: 0; }
 
     /* Form-field row: label on the left, number input + unit on the right. */
     .field-row {
@@ -444,7 +453,7 @@
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      padding: 80px;
+      padding: var(--canvas-padding);
       margin: 0;
       border: 0;
       outline: 0;
@@ -611,7 +620,17 @@
 <body>
   <!-- Mobile device block screen -->
   <div id="mobile-block">
-    <img src="woodpile01.svg" id="mobile-logo" alt="logo">
+    <svg id="mobile-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208.75 56" fill="currentColor" role="img" aria-label="Woodpile">
+      <path d="M87.72,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM92.93,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+      <path d="M58.31,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM63.53,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+      <path d="M34.12,1v34.52c0,3.21-2.01,5.22-5.22,5.22h-3.31V15.25h6.02V1h-14.55v39.74h-3.31c-3.21,0-5.22-2.01-5.22-5.22V15.25h6.02V1H0v41.35c0,8.63,5.12,12.65,13.75,12.65h15.15c8.63,0,13.75-4.01,13.75-12.65l-.1-41.35h-8.43Z"/>
+      <path d="M195,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65v-10.84h-8.53v5.02c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-7.53h18.87v-15.35c0-8.63-5.12-13.65-13.75-13.65ZM189.88,20.47v-1c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v1h-10.34Z"/>
+      <polygon points="170.81 1 170.81 55 179.44 55 179.24 1 170.81 1"/>
+      <path d="M116.22,1h-12.75v53.99h12.75c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM121.44,35.53c0,3.21-2.01,5.22-5.22,5.22h-4.22V15.25h4.22c3.21,0,5.22,1,5.22,4.22v16.06Z"/>
+      <polygon points="159.77 1 159.77 15.25 168.4 15.25 168.2 1 159.77 1"/>
+      <path d="M143.92,1h-11.94v53.99h8.63l-.03-6.72h3.34c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM149.13,28.8c0,3.21-2.01,5.22-5.22,5.22h-3.39l-.07-18.77h3.46c3.21,0,5.22,1,5.22,4.22v9.33Z"/>
+      <polygon points="159.77 17.76 159.77 55 168.4 55 168.2 17.76 159.77 17.76"/>
+    </svg>
     <p>I do not introduce the log.<br>(Sorry, guys, no mobile yet, please open the project on desktop)</p>
     <div id="mobile-social">
       <a href="https://www.behance.net/ilyazherikov" target="_blank" id="mobile-icon-behance">
@@ -627,7 +646,17 @@
     <!-- ====================== Control panel ====================== -->
     <aside id="panel">
       <div id="panel-body">
-      <img src="woodpile01.svg" alt="logo" id="panel-logo">
+      <svg id="panel-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208.75 56" fill="currentColor" role="img" aria-label="Woodpile">
+        <path d="M87.72,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM92.93,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+        <path d="M58.31,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM63.53,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+        <path d="M34.12,1v34.52c0,3.21-2.01,5.22-5.22,5.22h-3.31V15.25h6.02V1h-14.55v39.74h-3.31c-3.21,0-5.22-2.01-5.22-5.22V15.25h6.02V1H0v41.35c0,8.63,5.12,12.65,13.75,12.65h15.15c8.63,0,13.75-4.01,13.75-12.65l-.1-41.35h-8.43Z"/>
+        <path d="M195,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65v-10.84h-8.53v5.02c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-7.53h18.87v-15.35c0-8.63-5.12-13.65-13.75-13.65ZM189.88,20.47v-1c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v1h-10.34Z"/>
+        <polygon points="170.81 1 170.81 55 179.44 55 179.24 1 170.81 1"/>
+        <path d="M116.22,1h-12.75v53.99h12.75c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM121.44,35.53c0,3.21-2.01,5.22-5.22,5.22h-4.22V15.25h4.22c3.21,0,5.22,1,5.22,4.22v16.06Z"/>
+        <polygon points="159.77 1 159.77 15.25 168.4 15.25 168.2 1 159.77 1"/>
+        <path d="M143.92,1h-11.94v53.99h8.63l-.03-6.72h3.34c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM149.13,28.8c0,3.21-2.01,5.22-5.22,5.22h-3.39l-.07-18.77h3.46c3.21,0,5.22,1,5.22,4.22v9.33Z"/>
+        <polygon points="159.77 17.76 159.77 55 168.4 55 168.2 17.76 159.77 17.76"/>
+      </svg>
 
       <!-- Tier 0: always active. The Upload button lives on the canvas
            overlay until a font loads, then moves in here below the logo. -->
@@ -848,8 +877,18 @@
     const fontkit = fontkitNS.default || fontkitNS;
 
     // ---------------- Constants ----------------
-    const MARGIN = 48; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
+
+    // Canvas text padding, read live from the --canvas-padding CSS variable
+    // so the #text-input padding and the canvas layout margin share one
+    // source of truth and can never desync. Called at the top of each
+    // function that lays out or positions text, so it always reflects the
+    // current computed value (e.g. after a responsive change).
+    function getCanvasPadding() {
+      const v = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-padding');
+      return parseFloat(v) || 48; // fallback if unset
+    }
 
     // ---------------- App state ----------------
     const state = {
@@ -1001,7 +1040,8 @@
     // reads, no side effects. Line height does NOT affect wrapping — only
     // the vertical block height, which callers compute separately.
     function layoutLinesAtSize(text, size) {
-      const availW = p5Instance.width - 2 * MARGIN;
+      const margin = getCanvasPadding();
+      const availW = p5Instance.width - 2 * margin;
       // Width of `str` in canvas px at the given size.
       const widthPx = (str) => {
         if (!str) return 0;
@@ -1055,21 +1095,23 @@
 
     // Does `textInput.value` fit vertically at the given size AND line
     // height? Wrapping depends on size only; line height scales the block
-    // height. Same maxH (canvas height - 2*MARGIN) as the typing overflow
+    // height. Same maxH (canvas height - 2*margin) as the typing overflow
     // rule, so both sliders stay consistent with typing behavior.
     function textFits(size, lhPct) {
+      const margin = getCanvasPadding();
       const lines = layoutLinesAtSize(textInput.value, size);
       const blockH = lines.length * size * (lhPct / 100);
-      return blockH <= (p5Instance.height - 2 * MARGIN);
+      return blockH <= (p5Instance.height - 2 * margin);
     }
 
     // True if `text` fits vertically at the current font size + line
     // height. Wrapping depends on size only; line height scales the block
-    // height. Same threshold (canvas height - 2*MARGIN) as the slider clamps.
+    // height. Same threshold (canvas height - 2*margin) as the slider clamps.
     function fitsVertically(text) {
+      const margin = getCanvasPadding();
       const lines = layoutLinesAtSize(text, state.fontSize);
       const blockH = lines.length * state.fontSize * (state.lineHeightPct / 100);
-      return blockH <= (p5Instance.height - 2 * MARGIN);
+      return blockH <= (p5Instance.height - 2 * margin);
     }
 
     // Longest prefix of `text` that fits vertically. Trims whole words from
@@ -1116,17 +1158,18 @@
       currentLines = [];
       if (!fontInstance) return;
 
+      const margin = getCanvasPadding();
       const { lines, lineHeight } = layoutLines(textInput.value);
       const upm = fontInstance.unitsPerEm || font.unitsPerEm;
       const scale = state.fontSize / upm;
-      const firstBaseline = MARGIN + fontInstance.ascent * scale;
+      const firstBaseline = margin + fontInstance.ascent * scale;
 
       // Collect every (variation-applied) glyph contour as a polygon.
       const polys = [];
       for (let i = 0; i < lines.length; i++) {
         if (!lines[i]) continue;
         const baselineY = firstBaseline + i * lineHeight;
-        addLinePolygons(lines[i], MARGIN, baselineY, scale, polys);
+        addLinePolygons(lines[i], margin, baselineY, scale, polys);
       }
       if (!polys.length) return;
 
