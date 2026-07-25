@@ -182,20 +182,22 @@
       bottom: calc(100% + 8px);
       right: 0;
       width: 240px;
-      background: var(--card-bg);
+      background: var(--social-bg);
       border-radius: var(--radius-card);
       padding: var(--card-padding);
       z-index: 20;
       font-size: 14px;
       font-weight: 500;
       line-height: 18px;
-      color: var(--text-main);
-      box-shadow: 0 8px 24px var(--shadow-color);
+      color: var(--sidebar-bg);
     }
     #credits-popover p { margin: 0 0 8px; }
     #credits-popover p:last-child { margin-bottom: 0; }
     #credits-popover a { color: var(--link-text); text-decoration: none; }
-    #credits-popover a:hover { text-decoration: underline; }
+    #credits-popover a:hover {
+      color: var(--slider-track);   /* #aad2ff, same as unfilled slider track */
+      text-decoration: underline;
+    }
 
     /* Right: canvas host fills remaining width */
     #canvas-host {
