@@ -518,14 +518,34 @@
       outline-offset: -12px;
     }
 
-    /* Upload button lays out an optional icon beside its label. */
+    /* Upload/reload button: a "combined button" — centered label on the
+       left, an icon on the right, separated by a vertical divider. */
     #upload-btn {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
+      padding: var(--btn-combined-pad-v) var(--btn-combined-pad-r)
+               var(--btn-combined-pad-v) var(--btn-combined-pad-l); /* 12/12/12/16 */
+      gap: 0;
     }
-    #upload-btn svg { flex: none; }
+    #upload-btn .btn-label {
+      flex: 1 1 auto;
+      min-width: 0;               /* allow shrinking for ellipsis */
+      text-align: center;         /* centered in the space left of the divider */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;    /* long font names truncate with … */
+    }
+    #upload-btn .btn-icon {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      /* 1px full-height divider on the LEFT of the icon block */
+      border-left: 1px solid var(--btn-primary-divider);
+      padding-left: var(--btn-combined-pad-r);           /* 12px divider <-> icon, matches button right padding */
+      margin-left: var(--btn-combined-divider-pad-l);    /* 4px label <-> divider */
+      height: 24px;               /* divider height per Figma */
+    }
+    #upload-btn .btn-icon svg { width: 18px; height: 18px; }
 
     /* Social links, now in the sidebar footer. */
     #social-icons {
@@ -843,8 +863,10 @@
       <div id="empty-state">
         <div id="empty-caption">Wait for the tea, the fish aren't running!</div>
         <button class="action" id="upload-btn">
-          <span class="label">Upload font</span>
-          <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>
+          <span class="btn-label">Upload font</span>
+          <span class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
+          </span>
         </button>
         <div id="drop-hint">...or drag and drop a font file here (.otf or .ttf)</div>
       </div>
@@ -1505,10 +1527,23 @@
     // =========================================================
     uploadBtn.addEventListener('click', () => fontInput.click());
 
-    // Show the loaded font name on the button. Only the .label span text
-    // changes; the upload-simple icon (in the HTML) stays to its right.
+    // Combined-button icons (Phosphor, viewBox 0 0 256 256): upload-simple
+    // for the empty state, arrows-clockwise for the loaded/reload state.
+    const ICON_UPLOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>';
+    const ICON_RELOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>';
+
+    // Show the loaded font name on the button. Only the .btn-label span text
+    // changes; the divider + icon block to its right are left intact.
     function setUploadLabel(name) {
-      uploadBtn.querySelector('.label').textContent = name;
+      uploadBtn.querySelector('.btn-label').textContent = name;
+    }
+
+    // Swap the combined-button's icon between states without disturbing the
+    // divider or label. 'reload' = loaded (arrows-clockwise); anything else =
+    // empty (upload-simple).
+    function setUploadIcon(kind) {
+      uploadBtn.querySelector('.btn-icon').innerHTML =
+        kind === 'reload' ? ICON_RELOAD : ICON_UPLOAD;
     }
 
     // Shared font-loading path for both the file picker and drag-and-drop.
@@ -1551,6 +1586,7 @@
       uploadControl.insertBefore(uploadBtn, fontInput);
       uploadOverlay.style.display = 'none';
       setUploadLabel(fontDisplayName(parsed) || file.name);
+      setUploadIcon('reload'); // loaded state: clicking now reloads the font
 
       buildAxisSliders(parsed);
       updateFontInstance();
