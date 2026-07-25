@@ -102,6 +102,7 @@
       --btn-regular-pad-h: 16px;
       --btn-regular-pad-v: 12px;
       /* empty state */
+      --empty-text: rgba(0, 0, 0, 0.5);   /* caption + drop hint text */
       --empty-state-margin: 24px;         /* caption -> button */
       --empty-state-margin-button: 8px;   /* button -> drop hint */
       /* combined button paddings */
@@ -167,13 +168,23 @@
     #credits-btn {
       border: none;
       background: none;
-      padding: 0;
+      padding: var(--link-button-pad-v) var(--link-button-pad-h);
+      border-radius: var(--radius-button);
       cursor: pointer;
       font-family: inherit;
       font-size: 14px;
       font-weight: 500;
       line-height: 18px;
       color: var(--link-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    #credits-btn:hover {
+      color: var(--link-text-hover);
+      background: var(--link-bg-hover);
+    }
+    #credits-btn:active {
+      color: var(--link-text-pressed);
+      background: var(--link-bg-pressed);
     }
     /* Credits popover: styled like a control card, anchored above the
        button and kept inside the sidebar. */
@@ -316,12 +327,18 @@
       border-radius: 0 0 var(--radius-card) var(--radius-card);
       font-family: inherit;
       font-size: 14px;
-      font-weight: 500;
-      line-height: 18px;
+      font-weight: 600;                /* Section Header style (Inter SemiBold 14/20) */
+      line-height: 20px;
       text-align: center;
       cursor: pointer;
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
     .step-card:not(.collapsed) .step-strip { display: none; }
+    .step-card.collapsed .step-strip:hover { background: var(--btn-primary-bg-hover); }
+    .step-card.collapsed .step-strip:active {
+      background: var(--btn-primary-bg-pressed);
+      color: var(--btn-primary-text-pressed);
+    }
 
     /* One slider control: a form-field row (label + number + unit) above
        the slider itself. */
@@ -333,28 +350,38 @@
     #axes-container { margin-bottom: var(--card-row-margin); }
     #axes-container:empty { display: none; margin-bottom: 0; }
 
-    /* Form-field row: label on the left, number input + unit on the right. */
+    /* Form-field row: [label + unit] on the left, number input pinned right. */
     .field-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--input-label-margin);   /* 12px between label wrap and input */
       margin-bottom: var(--input-slider-margin);
     }
-    .control label {
+    .label-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;                          /* label <-> unit */
+    }
+    .label-wrap label {
       font-size: 14px;
       font-weight: 500;
       line-height: 18px;
       color: var(--input-label);
-      margin-right: var(--input-label-margin);
+      margin: 0;
     }
-    .field-value {
-      display: flex;
-      align-items: center;
-      gap: var(--input-unit-margin);
+    .label-wrap .unit {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--input-unit);          /* light blue */
     }
 
     /* Editable number field paired with each slider. */
     .num-input {
+      flex: 0 0 auto;
       width: 48px;
       text-align: right;
       background: var(--input-bg);
@@ -366,18 +393,18 @@
       font-weight: 500;
       line-height: 18px;
       color: var(--input-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
-    .num-input:focus { outline: none; border-color: var(--accent); }
+    .num-input:not(:disabled):hover { border-color: var(--input-border-hover); }
+    .num-input:not(:disabled):focus {
+      background: var(--input-bg-active);
+      border-color: var(--input-border-active);
+      outline: none;
+    }
     /* Strip the native number spinners so the field stays compact. */
     .num-input::-webkit-outer-spin-button,
     .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .num-input { -moz-appearance: textfield; appearance: textfield; }
-    .unit {
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 18px;
-      color: var(--input-unit);
-    }
 
     /* Custom range sliders: accent fill + handle over a light-blue track,
        no border/contour. WebKit fill is painted via a JS gradient
@@ -408,6 +435,10 @@
     input[type="range"]::-moz-range-progress {
       height: 4px; border-radius: 2px; background: var(--slider-filled);
     }
+    /* Track hover. No transition here: it would smear the JS-painted fill
+       gradient. WebKit sliders carry an inline fill gradient, so this shows
+       on the unpainted/Firefox track. */
+    input[type="range"]:not(:disabled):hover { background: var(--slider-track-hover); }
 
 
     /* Action buttons */
@@ -424,11 +455,27 @@
       border: 1px solid var(--btn-primary-bg);
       background: var(--btn-primary-bg);
       color: var(--btn-primary-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .action:not(.secondary):not(:disabled):hover {
+      background: var(--btn-primary-bg-hover);
+    }
+    .action:not(.secondary):not(:disabled):active {
+      background: var(--btn-primary-bg-pressed);
+      color: var(--btn-primary-text-pressed);
     }
     .action.secondary {
       background: #fff;
       border: 1px solid var(--btn-secondary-border);
       color: var(--btn-secondary-text);
+    }
+    .action.secondary:not(:disabled):hover {
+      color: var(--btn-secondary-text-hover);
+      border-color: var(--btn-secondary-border-hover);
+    }
+    .action.secondary:not(:disabled):active {
+      color: var(--btn-secondary-text-pressed);
+      border-color: var(--btn-secondary-border-pressed);
     }
 
     /* Upload error message */
@@ -495,7 +542,7 @@
       font-size: 20px;
       font-weight: 500;
       line-height: 24px;
-      color: var(--text-main-disabled);
+      color: var(--empty-text);
       margin-bottom: var(--empty-state-margin);
     }
     #empty-state #upload-btn {
@@ -508,7 +555,7 @@
       font-size: 12px;
       font-weight: 500;
       line-height: 16px;
-      color: var(--text-main-disabled);
+      color: var(--empty-text);
     }
     /* Subtle dashed hint while a font file is dragged over the canvas.
        Applied from JS via classList in the drag handlers. */
@@ -553,6 +600,18 @@
       flex-direction: row;
       gap: var(--social-buttons-margin);
     }
+    /* Circular icon buttons: background hover/press. (The icon glyph itself
+       also shifts to accent on hover — see the svg rule below.) */
+    #icon-behance,
+    #icon-linkedin {
+      display: block;
+      border-radius: 50%;
+      transition: background-color 0.12s ease;
+    }
+    #icon-behance:hover,
+    #icon-linkedin:hover { background: var(--social-bg-hover); }
+    #icon-behance:active,
+    #icon-linkedin:active { background: var(--social-bg-pressed); }
     /* Inline SVGs coloured via currentColor: solid --social-bg at rest. */
     #icon-behance svg,
     #icon-linkedin svg {
@@ -698,22 +757,22 @@
         <div class="step-body">
           <div class="control">
             <div class="field-row">
-              <label for="fontSize">Font size</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
+              <div class="label-wrap">
+                <label for="fontSize">Font size</label>
                 <span class="unit">px</span>
               </div>
+              <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
             </div>
             <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="lineHeight">Line height</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
+              <div class="label-wrap">
+                <label for="lineHeight">Line height</label>
                 <span class="unit">%</span>
               </div>
+              <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
             </div>
             <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
           </div>
@@ -723,22 +782,22 @@
 
           <div class="control">
             <div class="field-row">
-              <label for="thickness">Line thickness</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
+              <div class="label-wrap">
+                <label for="thickness">Line thickness</label>
                 <span class="unit">px</span>
               </div>
+              <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
             </div>
             <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="gap">Gap</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
+              <div class="label-wrap">
+                <label for="gap">Gap</label>
                 <span class="unit">px</span>
               </div>
+              <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
             </div>
             <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
           </div>
@@ -746,11 +805,11 @@
           <!-- Angle (0 = horizontal, 90 = vertical) -->
           <div class="control">
             <div class="field-row">
-              <label for="angle">Angle</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
+              <div class="label-wrap">
+                <label for="angle">Angle</label>
                 <span class="unit">°</span>
               </div>
+              <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
             </div>
             <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
           </div>
@@ -774,50 +833,50 @@
         <div class="step-body">
           <div class="control">
             <div class="field-row">
-              <label for="frictionAir">Air resistance</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="frictionAir-val" min="0.2" max="1.0" step="0.01" value="0.40" disabled aria-label="Air resistance value"/>
+              <div class="label-wrap">
+                <label for="frictionAir">Air resistance</label>
               </div>
+              <input type="number" class="num-input" id="frictionAir-val" min="0.2" max="1.0" step="0.01" value="0.40" disabled aria-label="Air resistance value"/>
             </div>
             <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="restitution">Bounciness</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="restitution-val" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness value"/>
+              <div class="label-wrap">
+                <label for="restitution">Bounciness</label>
               </div>
+              <input type="number" class="num-input" id="restitution-val" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness value"/>
             </div>
             <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="friction">Surface friction</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="friction-val" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction value"/>
+              <div class="label-wrap">
+                <label for="friction">Surface friction</label>
               </div>
+              <input type="number" class="num-input" id="friction-val" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction value"/>
             </div>
             <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="mouseForceScale">Cursor force</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="mouseForceScale-val" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force value"/>
+              <div class="label-wrap">
+                <label for="mouseForceScale">Cursor force</label>
               </div>
+              <input type="number" class="num-input" id="mouseForceScale-val" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force value"/>
             </div>
             <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
           </div>
 
           <div class="control">
             <div class="field-row">
-              <label for="spin">Spin</label>
-              <div class="field-value">
-                <input type="number" class="num-input" id="spin-val" min="0.1" max="1" step="0.05" value="0.80" disabled aria-label="Spin value"/>
+              <div class="label-wrap">
+                <label for="spin">Spin</label>
               </div>
+              <input type="number" class="num-input" id="spin-val" min="0.1" max="1" step="0.05" value="0.80" disabled aria-label="Spin value"/>
             </div>
             <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
           </div>
@@ -1685,20 +1744,20 @@
         // parsed as HTML.
         const row = document.createElement('div');
         row.className = 'field-row';
+        const labelWrap = document.createElement('div');
+        labelWrap.className = 'label-wrap';
         const lab = document.createElement('label');
         lab.textContent = label;
         lab.setAttribute('for', `axis-${tag}`);
-        const valWrap = document.createElement('div');
-        valWrap.className = 'field-value';
+        labelWrap.appendChild(lab); // axes are unitless: no unit span
         const numEl = document.createElement('input');
         numEl.type = 'number';
         numEl.className = 'num-input';
         numEl.id = `axis-${tag}-val`;
         numEl.min = min; numEl.max = max; numEl.step = step; numEl.value = def;
         numEl.setAttribute('aria-label', `${label} value`);
-        valWrap.appendChild(numEl);
-        row.appendChild(lab);
-        row.appendChild(valWrap);
+        row.appendChild(labelWrap);
+        row.appendChild(numEl);
 
         const input = document.createElement('input');
         input.type = 'range';
