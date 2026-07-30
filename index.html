@@ -61,8 +61,8 @@
       /* slider hover */
       --slider-track-hover: #7cb9fe;
       /* social button states */
-      --social-bg-hover: #011e32;
-      --social-bg-pressed: #000c14;
+      --social-bg-hover: #148bfd;
+      --social-bg-pressed: #0882f7;
       /* link button (Credits) states */
       --link-text-hover: #0972d7;
       --link-text-pressed: #0a63b8;
@@ -600,34 +600,28 @@
       flex-direction: row;
       gap: var(--social-buttons-margin);
     }
-    /* Circular icon buttons: background hover/press. (The icon glyph itself
-       also shifts to accent on hover — see the svg rule below.) */
+    /* Knock-out badges: each SVG path is a filled disc with the logo cut out
+       of it (nonzero fill rule), so the PATH color is the disc color and the
+       cut-out reveals whatever is behind. The <a> wrapper must never paint a
+       background, or it would fill the hole. */
     #icon-behance,
     #icon-linkedin {
       display: block;
-      border-radius: 50%;
-      transition: background-color 0.12s ease;
+      background: none;
     }
-    #icon-behance:hover,
-    #icon-linkedin:hover { background: var(--social-bg-hover); }
-    #icon-behance:active,
-    #icon-linkedin:active { background: var(--social-bg-pressed); }
-    /* Inline SVGs coloured via currentColor: solid --social-bg at rest. */
+    /* Disc color by state; the cut-out logo stays transparent throughout. */
     #icon-behance svg,
     #icon-linkedin svg {
       display: block;
       width: 40px;
       height: 40px;
-      color: var(--social-bg);
-      transition: color 0.15s ease;
+      color: var(--social-bg);          /* disc dark at rest */
+      transition: color 0.12s ease;
     }
-    /* On hover/tap, both icons switch to the accent blue */
     #icon-behance:hover svg,
+    #icon-linkedin:hover svg { color: var(--social-bg-hover); }
     #icon-behance:active svg,
-    #icon-linkedin:hover svg,
-    #icon-linkedin:active svg {
-      color: var(--accent);
-    }
+    #icon-linkedin:active svg { color: var(--social-bg-pressed); }
 
     /* Mobile block screen — shown only on narrow viewports */
     #mobile-block {
@@ -679,22 +673,25 @@
       gap: 10px;
     }
 
+    /* Knock-out badges (mobile): same as desktop — color the path, never
+       paint the wrapper. */
+    #mobile-icon-behance,
+    #mobile-icon-linkedin {
+      display: block;
+      background: none;
+    }
     #mobile-icon-behance svg,
     #mobile-icon-linkedin svg {
       display: block;
       width: 60px;
       height: 60px;
       color: var(--social-bg);
-      transition: color 0.15s ease;
+      transition: color 0.12s ease;
     }
-
-    /* On hover/tap, both mobile icons switch to the accent blue */
     #mobile-icon-behance:hover svg,
+    #mobile-icon-linkedin:hover svg { color: var(--social-bg-hover); }
     #mobile-icon-behance:active svg,
-    #mobile-icon-linkedin:hover svg,
-    #mobile-icon-linkedin:active svg {
-      color: var(--accent);
-    }
+    #mobile-icon-linkedin:active svg { color: var(--social-bg-pressed); }
   </style>
 </head>
 
