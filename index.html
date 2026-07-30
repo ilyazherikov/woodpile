@@ -1392,11 +1392,21 @@
         }
       };
 
+      // p5 listens on the window, so mouse events also fire for clicks on
+      // the sidebar. Only presses that start ON the canvas count as a drag
+      // action — otherwise every sidebar click would push a no-op snapshot
+      // onto the undo stack and evict real history.
+      const mouseOnCanvas = () =>
+        p.mouseX >= 0 && p.mouseY >= 0 &&
+        p.mouseX <= p.width && p.mouseY <= p.height;
+
       // Cursor interaction: force is applied while the mouse button is
       // held and the cursor moves. p5 fires mouseDragged (not mouseMoved)
       // during a held-button drag, with accurate per-event velocity.
+      // Gated on pendingSnapshot so force is only applied during a drag
+      // that started on the canvas (and is therefore undoable).
       p.mouseDragged = () => {
-        if (!physicsActive) return;
+        if (!physicsActive || !pendingSnapshot) return;
         const vx = p.mouseX - p.pmouseX;
         const vy = p.mouseY - p.pmouseY;
         applyMouseForce(p.mouseX, p.mouseY, vx, vy);
@@ -1405,7 +1415,7 @@
       // Undo/redo drag boundaries: snapshot BEFORE the push at press,
       // commit it to the undo stack at release.
       p.mousePressed = () => {
-        if (!physicsActive) return;
+        if (!physicsActive || !mouseOnCanvas()) return;
         pendingSnapshot = captureState();
       };
       p.mouseReleased = () => {
@@ -1624,6 +1634,19 @@
         if (typeof parsed.layout !== 'function' && parsed.fonts) {
           parsed = parsed.fonts[0];
         }
+        // Probe the paths the commit phase (and every later rebuild)
+        // relies on: shaping, metrics, and variation axes. A font that
+        // parses but has broken tables throws HERE, while the previously
+        // loaded font is still fully intact.
+        parsed.layout('x');
+        if (!(parsed.unitsPerEm > 0)) throw new Error('bad font metrics');
+        if (parsed.variationAxes && Object.keys(parsed.variationAxes).length) {
+          const defaults = {};
+          for (const [tag, ax] of Object.entries(parsed.variationAxes)) {
+            defaults[tag] = ax.default;
+          }
+          parsed.getVariation(defaults).layout('x');
+        }
       } catch (err) {
         showFontError();
         return;
@@ -1635,28 +1658,35 @@
       // only after a clean parse, so a corrupt file leaves everything intact.
       returnToStep1();
 
-      font = parsed;
-      fontError.hidden = true;
+      // The probe above makes a mid-commit throw very unlikely, but if one
+      // still happens, surface the error instead of dying silently with the
+      // UI half-updated.
+      try {
+        font = parsed;
+        fontError.hidden = true;
 
-      injectFontFace(file);
+        injectFontFace(file);
 
-      // First load: move the button off the canvas overlay into the left
-      // panel (below the logo) and hide the overlay. Idempotent on reload.
-      uploadControl.insertBefore(uploadBtn, fontInput);
-      uploadOverlay.style.display = 'none';
-      setUploadLabel(fontDisplayName(parsed) || file.name);
-      setUploadIcon('reload'); // loaded state: clicking now reloads the font
+        // First load: move the button off the canvas overlay into the left
+        // panel (below the logo) and hide the overlay. Idempotent on reload.
+        uploadControl.insertBefore(uploadBtn, fontInput);
+        uploadOverlay.style.display = 'none';
+        setUploadLabel(fontDisplayName(parsed) || file.name);
+        setUploadIcon('reload'); // loaded state: clicking now reloads the font
 
-      buildAxisSliders(parsed);
-      updateFontInstance();
+        buildAxisSliders(parsed);
+        updateFontInstance();
 
-      setTier1Enabled(true);
-      textInput.hidden = false;
-      textInput.style.fontFamily = "'UploadedFont', sans-serif";
-      textInput.style.fontSize = state.fontSize + 'px';
-      applyVariationCSS();
-      textInput.focus();
-      rebuildPattern();
+        setTier1Enabled(true);
+        textInput.hidden = false;
+        textInput.style.fontFamily = "'UploadedFont', sans-serif";
+        textInput.style.fontSize = state.fontSize + 'px';
+        applyVariationCSS();
+        textInput.focus();
+        rebuildPattern();
+      } catch (err) {
+        showFontError();
+      }
     }
 
     fontInput.addEventListener('change', async (e) => {
