@@ -6,32 +6,208 @@
   <title>Woodpile Tool</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
+  <!-- Inter (UI chrome only; canvas text uses the uploaded font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+
   <!-- ====================== Styles ====================== -->
   <style>
     * { box-sizing: border-box; }
+
+    /* ---- Design tokens (single source of truth) ---- */
+    :root {
+      /* colors */
+      --main-bg: #f5f5f5;           /* page background (grey) */
+      --sidebar-bg: #ffffff;        /* floating sidebar card */
+      --text-main: #000c14;
+      --text-main-disabled: #000c14b2;
+      --accent: #148bfd;            /* interface accent */
+      --card-bg: #f6fafe;
+      --card-bg-disabled: #f4f7fb;
+      --input-bg: #ffffffe5;
+      --input-border: #d7e9fe;
+      --input-label: #000c14;
+      --input-text: #000c14;
+      --input-unit: #96c1ee;
+      --slider-track: #aad2ff;
+      --slider-filled: #148bfd;
+      --slider-handle: #148bfd;
+      --btn-primary-bg: #148bfd;
+      --btn-primary-text: #ffffff;
+      --btn-secondary-text: #148bfd;
+      --btn-secondary-border: #148bfd;
+      --social-bg: #000c14;
+      --link-text: #148bfd;
+      --step-icon-bg: #000c14;
+      --step-icon-bg-disabled: #000c1499;
+      --step-icon-text: #ffffff;
+      /* button primary states */
+      --btn-primary-bg-hover: #0882f7;
+      --btn-primary-bg-pressed: #0882f7;
+      --btn-primary-text-pressed: #ebebeb;
+      --btn-primary-divider: #ffffffcc;
+      /* button secondary states */
+      --btn-secondary-text-hover: #0972d7;
+      --btn-secondary-border-hover: #0972d7;
+      --btn-secondary-text-pressed: #0a63b8;
+      --btn-secondary-border-pressed: #0a63b8;
+      /* number input states */
+      --input-unit-hover: #7bb1ea;
+      --input-border-hover: #b9d9fe;
+      --input-bg-active: #ffffff;
+      --input-border-active: #a5cffd;
+      --input-unit-active: #7bb1ea;
+      /* slider hover */
+      --slider-track-hover: #7cb9fe;
+      /* social button states */
+      --social-bg-hover: #148bfd;
+      --social-bg-pressed: #0882f7;
+      /* link button (Credits) states */
+      --link-text-hover: #0972d7;
+      --link-text-pressed: #0a63b8;
+      --link-bg-hover: #edf5fc;
+      --link-bg-pressed: #e5f0fb;
+      /* elevation */
+      --shadow-color: #000c141f;    /* 12% of #000c14 */
+      /* canvas */
+      --canvas-bg: #f5f5f5;
+      --canvas-text: #000000;
+      /* radii */
+      --radius-card: 20px;
+      --radius-button: 8px;
+      --radius-input: 4px;
+      --radius-sidebar: 28px;
+      /* spacing */
+      --sidebar-pad-h: 16px;
+      --sidebar-pad-v: 32px;
+      --blocks-spacing: 24px;
+      --section-header-margin: 8px;
+      --card-padding: 16px;
+      --card-row-margin: 12px;
+      --card-blocks-margin: 16px;
+      --card-buttons-margin: 8px;
+      --input-label-margin: 12px;
+      --input-slider-margin: 4px;
+      --input-unit-margin: 4px;
+      --input-pad-h: 8px;
+      --input-pad-v: 4px;
+      --social-buttons-margin: 12px;
+      --canvas-padding: 48px;   /* single source of truth: drives BOTH the
+                                   #text-input padding and the JS canvas text
+                                   margin (getCanvasPadding), so they can't
+                                   desync */
+      --link-button-pad-h: 12px;
+      --link-button-pad-v: 8px;
+      --btn-regular-pad-h: 16px;
+      --btn-regular-pad-v: 12px;
+      /* empty state */
+      --empty-text: rgba(0, 0, 0, 0.5);   /* caption + drop hint text */
+      --empty-state-margin: 24px;         /* caption -> button */
+      --empty-state-margin-button: 8px;   /* button -> drop hint */
+      /* combined button paddings */
+      --btn-combined-pad-l: 16px;
+      --btn-combined-pad-r: 12px;
+      --btn-combined-pad-v: 12px;
+      --btn-combined-divider-pad-l: 4px;
+    }
+
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
     }
 
-    /* Split layout, full viewport height */
+    /* Split layout, full viewport height. Grey page background: the sidebar
+       is a white card floating above it, the canvas sits on the grey too. */
     #app {
       display: flex;
       height: 100vh;
       width: 100vw;
       overflow: hidden;
+      background: var(--main-bg);
     }
 
-    /* Left: fixed-width control panel */
+    /* Left: fixed-width control panel, a white card floating on the grey
+       page. Rounded on its right corners only, flush to the other edges,
+       with a shadow falling to the right. Raised above the canvas so the
+       shadow shows. */
     #panel {
-      width: 260px;
-      flex: 0 0 260px;
-      background: #ffffff;
-      border-right: 1px solid #ddd;
-      padding: 20px;
+      width: 300px;
+      flex: 0 0 300px;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+    /* Scrollable content region; the footer stays pinned below it. */
+    #panel-body {
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
+      padding: var(--sidebar-pad-v) var(--sidebar-pad-h);
+    }
+
+    /* Sidebar footer: social icons + Credits, pinned to the bottom. */
+    #sidebar-footer {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: var(--social-buttons-margin);
+      background: var(--sidebar-bg);
+      padding: 16px var(--sidebar-pad-h);
+    }
+    .credits-wrap {
+      position: relative;
+      margin-left: auto; /* push Credits to the right of the icons */
+    }
+    #credits-btn {
+      border: none;
+      background: none;
+      padding: var(--link-button-pad-v) var(--link-button-pad-h);
+      border-radius: var(--radius-button);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--link-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    #credits-btn:hover {
+      color: var(--link-text-hover);
+      background: var(--link-bg-hover);
+    }
+    #credits-btn:active {
+      color: var(--link-text-pressed);
+      background: var(--link-bg-pressed);
+    }
+    /* Credits popover: styled like a control card, anchored above the
+       button and kept inside the sidebar. */
+    #credits-popover {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      width: 240px;
+      background: var(--social-bg);
+      border-radius: var(--radius-card);
+      padding: var(--card-padding);
+      z-index: 20;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--sidebar-bg);
+    }
+    #credits-popover p { margin: 0 0 8px; }
+    #credits-popover p:last-child { margin-bottom: 0; }
+    #credits-popover a { color: var(--link-text); text-decoration: none; }
+    #credits-popover a:hover {
+      color: var(--slider-track);   /* #aad2ff, same as unfilled slider track */
+      text-decoration: underline;
     }
 
     /* Right: canvas host fills remaining width */
@@ -45,40 +221,192 @@
       width: 100%;
       height: auto;
       display: block;
-      margin-bottom: 10px;
+      margin-bottom: var(--blocks-spacing);
     }
 
-    /* Section divider (e.g. Physics) */
-    .section {
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid #eee;
+    /* Inline logos paint in the dark token via currentColor, so changing
+       --social-bg repaints them automatically. */
+    #panel-logo, #mobile-logo { color: var(--social-bg); }
+
+    /* Card grouping for a set of related controls. Purely visual — no
+       collapse/step logic yet (that's the later accordion pass). */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-card);
+      padding: var(--card-padding);
+      margin-bottom: var(--blocks-spacing);
     }
-    .section h2 {
+
+    /* ---- Two-step accordion cards ---- */
+    /* The strip is positioned relative to the card so it can hang flush to
+       the card's bottom edge when collapsed. */
+    .step-card { position: relative; }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: var(--card-blocks-margin);
+    }
+    .step-icon {
+      flex: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--step-icon-bg);
+      color: var(--step-icon-text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       font-size: 13px;
       font-weight: 600;
-      margin: 0 0 16px;
-      color: #070707;
+      line-height: 1;
     }
-
-    .control { margin-bottom: 22px; }
-    .control label {
-      display: block;
-      font-size: 12px;
+    .step-title {
+      font-size: 14px;
       font-weight: 600;
-      color: #333;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .control .value {
-      font-weight: 400;
-      color: #888;
-      text-transform: none;
-      letter-spacing: 0;
+      line-height: 20px;
+      color: var(--text-main);
     }
 
-    /* Custom range sliders: blue fill + thumb, plain grey unfilled track,
+    /* Button group at the bottom of a step card: secondary stacked ABOVE
+       primary, each full width on its own line. */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--card-buttons-margin);
+      margin-top: var(--card-blocks-margin);
+    }
+    .button-group .action {
+      width: 100%;
+      margin-bottom: 0;
+    }
+
+    /* Collapsed step 1: two stacked rounded layers, matching the Figma
+       "button subcard" + "Step=1, State=Disabled" card. Both layers sit in
+       normal flow; the grey plate has a -20px bottom margin so it overlaps
+       the blue button below it by 20px, and the blue button has a 28px top
+       padding — so the label lands 28 - 20 = 8px below the plate's bottom
+       edge (Figma subcard padding-t 28 / padding-b 8). `isolation` scopes
+       the z-index so the grey plate (z 2) stays above the blue (z 1). The
+       card itself is a bare container. */
+    .step-card.collapsed {
+      background: transparent;
+      padding: 0;
+      isolation: isolate;
+    }
+    .step-card.collapsed .step-body { display: none; }
+    .step-card.collapsed .step-icon { background: var(--step-icon-bg-disabled); }
+    .step-card.collapsed .step-title { color: var(--text-main-disabled); }
+
+    /* Grey header plate: normal flow, fully rounded, overlapping the blue
+       layer below it by 20px and painted on top of it. */
+    .step-card.collapsed .step-header {
+      position: relative;
+      z-index: 2;
+      margin: 0 0 -20px;
+      padding: var(--card-padding);
+      background: var(--card-bg-disabled);
+      border-radius: var(--radius-card);
+    }
+
+    /* Blue "go back to text settings" button: the outer layer below the
+       plate. Figma subcard paddings — top 28, bottom 8, sides 16 — so the
+       label sits 8px below the plate; only the bottom corners are rounded
+       (the square top is tucked under the plate). */
+    .step-card.collapsed .step-strip {
+      display: block;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      margin: 0;
+      padding: 28px 16px 8px;
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+      border: none;
+      border-radius: 0 0 var(--radius-card) var(--radius-card);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;                /* Subcaption style (Inter Medium 12/16) */
+      line-height: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .step-card:not(.collapsed) .step-strip { display: none; }
+    .step-card.collapsed .step-strip:hover { background: var(--btn-primary-bg-hover); }
+    .step-card.collapsed .step-strip:active {
+      background: var(--btn-primary-bg-pressed);
+      color: var(--btn-primary-text-pressed);
+    }
+
+    /* One slider control: a form-field row (label + number + unit) above
+       the slider itself. */
+    .control { margin-bottom: var(--card-row-margin); }
+    .control:last-child { margin-bottom: 0; }
+
+    /* Variable-font axis sliders are injected here. Separate the last axis
+       from the next control; collapse entirely for static fonts (no axes). */
+    #axes-container { margin-bottom: var(--card-row-margin); }
+    #axes-container:empty { display: none; margin-bottom: 0; }
+
+    /* Form-field row: [label + unit] on the left, number input pinned right. */
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--input-label-margin);   /* 12px between label wrap and input */
+      margin-bottom: var(--input-slider-margin);
+    }
+    .label-wrap {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;                          /* label <-> unit */
+    }
+    .label-wrap label {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--input-label);
+      margin: 0;
+    }
+    .label-wrap .unit {
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--input-unit);          /* light blue */
+    }
+
+    /* Editable number field paired with each slider. */
+    .num-input {
+      flex: 0 0 auto;
+      width: 48px;
+      text-align: right;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-input);
+      padding: var(--input-pad-v) var(--input-pad-h);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      color: var(--input-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .num-input:not(:disabled):hover { border-color: var(--input-border-hover); }
+    .num-input:not(:disabled):focus {
+      background: var(--input-bg-active);
+      border-color: var(--input-border-active);
+      outline: none;
+    }
+    /* Strip the native number spinners so the field stays compact. */
+    .num-input::-webkit-outer-spin-button,
+    .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .num-input { -moz-appearance: textfield; appearance: textfield; }
+
+    /* Custom range sliders: accent fill + handle over a light-blue track,
        no border/contour. WebKit fill is painted via a JS gradient
        (paintRangeFill); Firefox uses ::-moz-range-progress. */
     input[type="range"] {
@@ -87,60 +415,67 @@
       width: 100%;
       height: 4px;
       border-radius: 2px;
-      background: #d8d8d8;   /* unfilled track, no border */
+      background: var(--slider-track);
       outline: none;
       cursor: pointer;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none; appearance: none;
       width: 16px; height: 16px; border-radius: 50%;
-      background: #007CFF; border: none; cursor: pointer;
+      background: var(--slider-handle); border: none; cursor: pointer;
       margin-top: -6px;
     }
     input[type="range"]::-moz-range-thumb {
       width: 16px; height: 16px; border-radius: 50%;
-      background: #007CFF; border: none; cursor: pointer;
+      background: var(--slider-handle); border: none; cursor: pointer;
     }
     input[type="range"]::-moz-range-track {
-      height: 4px; border-radius: 2px; background: #d8d8d8; border: none;
+      height: 4px; border-radius: 2px; background: var(--slider-track); border: none;
     }
     input[type="range"]::-moz-range-progress {
-      height: 4px; border-radius: 2px; background: #007CFF;
+      height: 4px; border-radius: 2px; background: var(--slider-filled);
     }
-
-    /* "Save settings" checkbox row */
-    .checkbox-control {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #333;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-    }
-    .checkbox-control input { cursor: pointer; }
+    /* Track hover. No transition here: it would smear the JS-painted fill
+       gradient. WebKit sliders carry an inline fill gradient, so this shows
+       on the unpainted/Firefox track. */
+    input[type="range"]:not(:disabled):hover { background: var(--slider-track-hover); }
 
 
     /* Action buttons */
     .action {
       width: 100%;
-      padding: 10px 0;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 4px;
+      padding: 12px 16px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      border-radius: var(--radius-button);
       cursor: pointer;
-      margin-bottom: 10px;
-      border: 1px solid #007CFF;
-      background: #007CFF;
-      color: #fff;
+      margin-bottom: var(--card-buttons-margin);
+      border: 1px solid var(--btn-primary-bg);
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .action:not(.secondary):not(:disabled):hover {
+      background: var(--btn-primary-bg-hover);
+    }
+    .action:not(.secondary):not(:disabled):active {
+      background: var(--btn-primary-bg-pressed);
+      color: var(--btn-primary-text-pressed);
     }
     .action.secondary {
       background: #fff;
-      border: 1px solid #007CFF;
-      color: #007CFF;
+      border: 1px solid var(--btn-secondary-border);
+      color: var(--btn-secondary-text);
+    }
+    .action.secondary:not(:disabled):hover {
+      color: var(--btn-secondary-text-hover);
+      border-color: var(--btn-secondary-border-hover);
+    }
+    .action.secondary:not(:disabled):active {
+      color: var(--btn-secondary-text-pressed);
+      border-color: var(--btn-secondary-border-pressed);
     }
 
     /* Upload error message */
@@ -167,7 +502,7 @@
       width: 100%;
       height: 100%;
       box-sizing: border-box;
-      padding: 80px;
+      padding: var(--canvas-padding);
       margin: 0;
       border: 0;
       outline: 0;
@@ -185,25 +520,42 @@
     }
     #text-input::selection { background: rgba(7, 7, 7, 0.12); }
 
-    /* Upload button + drop hint, centred on the canvas just below the
-       placeholder text. Shown only while no font is loaded. */
-    #upload-overlay {
+    /* Empty state: one centred block (caption + upload button + drop hint)
+       shown on the canvas while no font is loaded. Centred both axes.
+       The container is transparent to pointer/drag events so drag-and-drop
+       still reaches #canvas-host; only the button re-enables them. */
+    #empty-state {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, 32px);
-      width: 240px;
+      inset: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
       z-index: 5;
-    }
-    #upload-overlay #upload-btn { margin-bottom: 0; }
-    #drop-hint {
-      font-size: 13px;
-      color: #bababa;
+      pointer-events: none;
+      box-sizing: border-box;
+      padding: var(--canvas-padding);
       text-align: center;
+    }
+    /* Empty Caption style: Inter 500 20/24. */
+    #empty-caption {
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 24px;
+      color: var(--empty-text);
+      margin-bottom: var(--empty-state-margin);
+    }
+    #empty-state #upload-btn {
+      width: 264px;
+      margin-bottom: var(--empty-state-margin-button);
+      pointer-events: auto;
+    }
+    /* Subcaption style: Inter 500 12/16. */
+    #drop-hint {
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      color: var(--empty-text);
     }
     /* Subtle dashed hint while a font file is dragged over the canvas.
        Applied from JS via classList in the drag handlers. */
@@ -213,41 +565,63 @@
       outline-offset: -12px;
     }
 
-    /* Upload button lays out an optional icon beside its label. */
+    /* Upload/reload button: a "combined button" — centered label on the
+       left, an icon on the right, separated by a vertical divider. */
     #upload-btn {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 6px;
+      padding: var(--btn-combined-pad-v) var(--btn-combined-pad-r)
+               var(--btn-combined-pad-v) var(--btn-combined-pad-l); /* 12/12/12/16 */
+      gap: 0;
     }
-    #upload-btn svg { flex: none; }
+    #upload-btn .btn-label {
+      flex: 1 1 auto;
+      min-width: 0;               /* allow shrinking for ellipsis */
+      text-align: center;         /* centered in the space left of the divider */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;    /* long font names truncate with … */
+    }
+    #upload-btn .btn-icon {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      /* 1px full-height divider on the LEFT of the icon block */
+      border-left: 1px solid var(--btn-primary-divider);
+      padding-left: var(--btn-combined-pad-r);           /* 12px divider <-> icon, matches button right padding */
+      margin-left: var(--btn-combined-divider-pad-l);    /* 4px label <-> divider */
+      height: 24px;               /* divider height per Figma */
+    }
+    #upload-btn .btn-icon svg { width: 18px; height: 18px; }
 
-    /* Social links overlaid on the canvas area, bottom-right */
+    /* Social links, now in the sidebar footer. */
     #social-icons {
-      position: absolute;
-      bottom: 80px;
-      right: 80px;
       display: flex;
       flex-direction: row;
-      gap: 10px;
-      z-index: 10;
+      gap: var(--social-buttons-margin);
     }
-    /* Inline SVGs coloured via currentColor: solid #070707 at rest. */
+    /* Knock-out badges: each SVG path is a filled disc with the logo cut out
+       of it (nonzero fill rule), so the PATH color is the disc color and the
+       cut-out reveals whatever is behind. The <a> wrapper must never paint a
+       background, or it would fill the hole. */
+    #icon-behance,
+    #icon-linkedin {
+      display: block;
+      background: none;
+    }
+    /* Disc color by state; the cut-out logo stays transparent throughout. */
     #icon-behance svg,
     #icon-linkedin svg {
       display: block;
       width: 40px;
       height: 40px;
-      color: #070707;
-      transition: color 0.15s ease;
+      color: var(--social-bg);          /* disc dark at rest */
+      transition: color 0.12s ease;
     }
-    /* On hover/tap, both icons switch to the exact accent blue #007CFF */
     #icon-behance:hover svg,
+    #icon-linkedin:hover svg { color: var(--social-bg-hover); }
     #icon-behance:active svg,
-    #icon-linkedin:hover svg,
-    #icon-linkedin:active svg {
-      color: #007CFF;
-    }
+    #icon-linkedin:active svg { color: var(--social-bg-pressed); }
 
     /* Mobile block screen — shown only on narrow viewports */
     #mobile-block {
@@ -299,29 +673,42 @@
       gap: 10px;
     }
 
+    /* Knock-out badges (mobile): same as desktop — color the path, never
+       paint the wrapper. */
+    #mobile-icon-behance,
+    #mobile-icon-linkedin {
+      display: block;
+      background: none;
+    }
     #mobile-icon-behance svg,
     #mobile-icon-linkedin svg {
       display: block;
       width: 60px;
       height: 60px;
-      color: #070707;
-      transition: color 0.15s ease;
+      color: var(--social-bg);
+      transition: color 0.12s ease;
     }
-
-    /* On hover/tap, both mobile icons switch to the exact accent blue #007CFF */
     #mobile-icon-behance:hover svg,
+    #mobile-icon-linkedin:hover svg { color: var(--social-bg-hover); }
     #mobile-icon-behance:active svg,
-    #mobile-icon-linkedin:hover svg,
-    #mobile-icon-linkedin:active svg {
-      color: #007CFF;
-    }
+    #mobile-icon-linkedin:active svg { color: var(--social-bg-pressed); }
   </style>
 </head>
 
 <body>
   <!-- Mobile device block screen -->
   <div id="mobile-block">
-    <img src="woodpile01.svg" id="mobile-logo" alt="logo">
+    <svg id="mobile-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208.75 56" fill="currentColor" role="img" aria-label="Woodpile">
+      <path d="M87.72,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM92.93,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+      <path d="M58.31,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM63.53,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+      <path d="M34.12,1v34.52c0,3.21-2.01,5.22-5.22,5.22h-3.31V15.25h6.02V1h-14.55v39.74h-3.31c-3.21,0-5.22-2.01-5.22-5.22V15.25h6.02V1H0v41.35c0,8.63,5.12,12.65,13.75,12.65h15.15c8.63,0,13.75-4.01,13.75-12.65l-.1-41.35h-8.43Z"/>
+      <path d="M195,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65v-10.84h-8.53v5.02c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-7.53h18.87v-15.35c0-8.63-5.12-13.65-13.75-13.65ZM189.88,20.47v-1c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v1h-10.34Z"/>
+      <polygon points="170.81 1 170.81 55 179.44 55 179.24 1 170.81 1"/>
+      <path d="M116.22,1h-12.75v53.99h12.75c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM121.44,35.53c0,3.21-2.01,5.22-5.22,5.22h-4.22V15.25h4.22c3.21,0,5.22,1,5.22,4.22v16.06Z"/>
+      <polygon points="159.77 1 159.77 15.25 168.4 15.25 168.2 1 159.77 1"/>
+      <path d="M143.92,1h-11.94v53.99h8.63l-.03-6.72h3.34c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM149.13,28.8c0,3.21-2.01,5.22-5.22,5.22h-3.39l-.07-18.77h3.46c3.21,0,5.22,1,5.22,4.22v9.33Z"/>
+      <polygon points="159.77 17.76 159.77 55 168.4 55 168.2 17.76 159.77 17.76"/>
+    </svg>
     <p>I do not introduce the log.<br>(Sorry, guys, no mobile yet, please open the project on desktop)</p>
     <div id="mobile-social">
       <a href="https://www.behance.net/ilyazherikov" target="_blank" id="mobile-icon-behance">
@@ -336,7 +723,18 @@
   <div id="app">
     <!-- ====================== Control panel ====================== -->
     <aside id="panel">
-      <img src="woodpile01.svg" alt="logo" id="panel-logo">
+      <div id="panel-body">
+      <svg id="panel-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208.75 56" fill="currentColor" role="img" aria-label="Woodpile">
+        <path d="M87.72,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM92.93,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+        <path d="M58.31,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65V13.65c0-8.63-5.12-13.65-13.75-13.65ZM63.53,36.53c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-17.06c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v17.06Z"/>
+        <path d="M34.12,1v34.52c0,3.21-2.01,5.22-5.22,5.22h-3.31V15.25h6.02V1h-14.55v39.74h-3.31c-3.21,0-5.22-2.01-5.22-5.22V15.25h6.02V1H0v41.35c0,8.63,5.12,12.65,13.75,12.65h15.15c8.63,0,13.75-4.01,13.75-12.65l-.1-41.35h-8.43Z"/>
+        <path d="M195,0c-8.63,0-13.65,5.02-13.65,13.65v28.7c0,8.63,5.02,13.65,13.65,13.65s13.75-5.02,13.75-13.65v-10.84h-8.53v5.02c0,3.21-2.01,5.22-5.22,5.22s-5.12-2.01-5.12-5.22v-7.53h18.87v-15.35c0-8.63-5.12-13.65-13.75-13.65ZM189.88,20.47v-1c0-3.21,1.91-5.22,5.12-5.22s5.22,2.01,5.22,5.22v1h-10.34Z"/>
+        <polygon points="170.81 1 170.81 55 179.44 55 179.24 1 170.81 1"/>
+        <path d="M116.22,1h-12.75v53.99h12.75c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM121.44,35.53c0,3.21-2.01,5.22-5.22,5.22h-4.22V15.25h4.22c3.21,0,5.22,1,5.22,4.22v16.06Z"/>
+        <polygon points="159.77 1 159.77 15.25 168.4 15.25 168.2 1 159.77 1"/>
+        <path d="M143.92,1h-11.94v53.99h8.63l-.03-6.72h3.34c8.63,0,13.75-5.02,13.75-13.65V14.65c0-8.63-5.12-13.65-13.75-13.65ZM149.13,28.8c0,3.21-2.01,5.22-5.22,5.22h-3.39l-.07-18.77h3.46c3.21,0,5.22,1,5.22,4.22v9.33Z"/>
+        <polygon points="159.77 17.76 159.77 55 168.4 55 168.2 17.76 159.77 17.76"/>
+      </svg>
 
       <!-- Tier 0: always active. The Upload button lives on the canvas
            overlay until a font loads, then moves in here below the logo. -->
@@ -345,76 +743,168 @@
         <div class="error" id="font-error" hidden></div>
       </div>
 
-      <!-- Tier 1: active after a font is loaded -->
-      <div class="control">
-        <label>Font size <span class="value" id="fontSize-val">150px</span></label>
-        <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
+      <!-- ===== Step 1: Set up the font (Tier 1) =====
+           Expanded initially; collapses to a muted bar (with the blue
+           "go back" strip) once Go to physics has run. -->
+      <div class="card step-card" id="step1">
+        <div class="step-header">
+          <span class="step-icon">1</span>
+          <span class="step-title">Set up the font</span>
+        </div>
+        <div class="step-body">
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="fontSize">Font size</label>
+                <span class="unit">px</span>
+              </div>
+              <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
+            </div>
+            <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="lineHeight">Line height</label>
+                <span class="unit">%</span>
+              </div>
+              <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
+            </div>
+            <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
+          </div>
+
+          <!-- Variable-font axis sliders are injected here at load time -->
+          <div id="axes-container"></div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="thickness">Line thickness</label>
+                <span class="unit">px</span>
+              </div>
+              <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
+            </div>
+            <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="gap">Gap</label>
+                <span class="unit">px</span>
+              </div>
+              <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
+            </div>
+            <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
+          </div>
+
+          <!-- Angle (0 = horizontal, 90 = vertical) -->
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="angle">Angle</label>
+                <span class="unit">°</span>
+              </div>
+              <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
+            </div>
+            <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
+          </div>
+
+          <div class="button-group">
+            <button class="action secondary" id="reset-settings-btn" disabled>Reset settings</button>
+            <button class="action" id="expand-btn" disabled>Go to physics</button>
+          </div>
+        </div>
+        <!-- Only shown while step 1 is collapsed. -->
+        <button class="step-strip" id="back-to-text-btn">Go back to text settings</button>
       </div>
 
-      <div class="control">
-        <label>Line height <span class="value" id="lineHeight-val">120%</span></label>
-        <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
+      <!-- ===== Step 2: Play with physics (Tier 2) =====
+           Collapsed + inert until Go to physics starts the engine. -->
+      <div class="card step-card collapsed" id="step2">
+        <div class="step-header">
+          <span class="step-icon">2</span>
+          <span class="step-title">Play with physics</span>
+        </div>
+        <div class="step-body">
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="frictionAir">Air resistance</label>
+              </div>
+              <input type="number" class="num-input" id="frictionAir-val" min="0.2" max="1.0" step="0.01" value="0.40" disabled aria-label="Air resistance value"/>
+            </div>
+            <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="restitution">Bounciness</label>
+              </div>
+              <input type="number" class="num-input" id="restitution-val" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness value"/>
+            </div>
+            <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="friction">Surface friction</label>
+              </div>
+              <input type="number" class="num-input" id="friction-val" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction value"/>
+            </div>
+            <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="mouseForceScale">Cursor force</label>
+              </div>
+              <input type="number" class="num-input" id="mouseForceScale-val" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force value"/>
+            </div>
+            <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
+          </div>
+
+          <div class="control">
+            <div class="field-row">
+              <div class="label-wrap">
+                <label for="spin">Spin</label>
+              </div>
+              <input type="number" class="num-input" id="spin-val" min="0.1" max="1" step="0.05" value="0.80" disabled aria-label="Spin value"/>
+            </div>
+            <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
+          </div>
+
+          <div class="button-group">
+            <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
+            <button class="action" id="export-btn" disabled>Export as SVG</button>
+          </div>
+        </div>
       </div>
 
-      <!-- Variable-font axis sliders are injected here at load time -->
-      <div id="axes-container"></div>
+      </div><!-- /#panel-body -->
 
-      <div class="control">
-        <label>Line thickness <span class="value" id="thickness-val">3px</span></label>
-        <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
-      </div>
-
-      <div class="control">
-        <label>Gap <span class="value" id="gap-val">3px</span></label>
-        <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
-      </div>
-
-      <!-- Angle (0 = horizontal, 90 = vertical) -->
-      <div class="control">
-        <label>Angle <span class="value" id="angle-val">0°</span></label>
-        <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
-      </div>
-
-      <button class="action" id="expand-btn" disabled>Expand</button>
-      <button class="action secondary" id="clear-btn" disabled>Clear canvas</button>
-
-      <!-- Tier 0: keep current settings across Clear (always active) -->
-      <label class="checkbox-control">
-        <input type="checkbox" id="save-settings" /> Save settings
-      </label>
-
-      <!-- ============ Physics section (Tier 2) ============ -->
-      <!-- All controls disabled until Expand starts the engine. -->
-      <div class="section">
-        <h2>Physics</h2>
-
-        <div class="control">
-          <label>Air resistance <span class="value" id="frictionAir-val">0.40</span></label>
-          <input type="range" id="frictionAir" min="0.2" max="1.0" step="0.01" value="0.4" disabled aria-label="Air friction"/>
+      <!-- ===== Sidebar footer: social icons + Credits ===== -->
+      <div id="sidebar-footer">
+        <div id="social-icons">
+          <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
+            <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
+            <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
+          </a>
         </div>
-
-        <div class="control">
-          <label>Bounciness <span class="value" id="restitution-val">0.3</span></label>
-          <input type="range" id="restitution" min="0" max="1" step="0.1" value="0.3" disabled aria-label="Bounciness"/>
+        <div class="credits-wrap">
+          <button type="button" id="credits-btn">Credits</button>
+          <div id="credits-popover" hidden>
+            <p>UX/UI: <a href="https://www.linkedin.com/in/bmbl/" target="_blank" rel="noopener">Artyom Rusakov</a></p>
+            <p>Valuable feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
+            <p>Idea: Ilya Zherikov, coding: <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
+          </div>
         </div>
-
-        <div class="control">
-          <label>Surface friction <span class="value" id="friction-val">0.1</span></label>
-          <input type="range" id="friction" min="0" max="1" step="0.1" value="0.1" disabled aria-label="Surface friction"/>
-        </div>
-
-        <div class="control">
-          <label>Cursor force <span class="value" id="mouseForceScale-val">0.2</span></label>
-          <input type="range" id="mouseForceScale" min="0.1" max="2.0" step="0.1" value="0.2" disabled aria-label="Cursor force"/>
-        </div>
-
-        <div class="control">
-          <label>Spin <span class="value" id="spin-val">0.80</span></label>
-          <input type="range" id="spin" min="0.1" max="1" step="0.05" value="0.8" disabled aria-label="Spin"/>
-        </div>
-
-        <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
-        <button class="action secondary" id="export-btn" disabled>Export as SVG</button>
       </div>
     </aside>
 
@@ -422,26 +912,21 @@
     <div id="canvas-host">
       <textarea id="text-input" spellcheck="false" autocomplete="off" hidden aria-label="Text input"></textarea>
 
-      <!-- Upload overlay: shown only in the placeholder (no-font) state.
-           Holds the Upload button (moved here from the panel) plus the
-           drag-and-drop hint. Hidden once a font is loaded. -->
-      <div id="upload-overlay">
+      <!-- Empty state: shown only in the no-font state. One centred block
+           with the caption, the Upload button (moved into the panel once a
+           font loads), and the drag-and-drop hint. Hidden once a font is
+           loaded. -->
+      <div id="empty-state">
+        <div id="empty-caption">Wait for the tea, the fish aren't running!</div>
         <button class="action" id="upload-btn">
-          <span class="label">Upload font</span>
-          <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v48H48V152a8,8,0,0,0-16,0v48a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
+          <span class="btn-label">Upload font</span>
+          <span class="btn-icon">
+            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
+          </span>
         </button>
-        <div id="drop-hint">...or drag and drop the font file here.</div>
+        <div id="drop-hint">...or drag and drop a font file here (.otf or .ttf)</div>
       </div>
 
-      <!-- Social links, overlaid bottom-right of the canvas area -->
-      <div id="social-icons">
-        <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
-          <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
-        </a>
-        <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
-          <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
-        </a>
-      </div>
     </div>
   </div>
 
@@ -472,9 +957,18 @@
     const fontkit = fontkitNS.default || fontkitNS;
 
     // ---------------- Constants ----------------
-    const MARGIN = 80; // padding around the text block, all sides
     const CURVE_STEPS = 8; // bezier flattening resolution
-    const PLACEHOLDER = "Wait for the tea, the fish aren't running!";
+
+    // Canvas text padding, read live from the --canvas-padding CSS variable
+    // so the #text-input padding and the canvas layout margin share one
+    // source of truth and can never desync. Called at the top of each
+    // function that lays out or positions text, so it always reflects the
+    // current computed value (e.g. after a responsive change).
+    function getCanvasPadding() {
+      const v = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-padding');
+      return parseFloat(v) || 48; // fallback if unset
+    }
 
     // ---------------- App state ----------------
     const state = {
@@ -626,7 +1120,8 @@
     // reads, no side effects. Line height does NOT affect wrapping — only
     // the vertical block height, which callers compute separately.
     function layoutLinesAtSize(text, size) {
-      const availW = p5Instance.width - 2 * MARGIN;
+      const margin = getCanvasPadding();
+      const availW = p5Instance.width - 2 * margin;
       // Width of `str` in canvas px at the given size.
       const widthPx = (str) => {
         if (!str) return 0;
@@ -680,21 +1175,23 @@
 
     // Does `textInput.value` fit vertically at the given size AND line
     // height? Wrapping depends on size only; line height scales the block
-    // height. Same maxH (canvas height - 2*MARGIN) as the typing overflow
+    // height. Same maxH (canvas height - 2*margin) as the typing overflow
     // rule, so both sliders stay consistent with typing behavior.
     function textFits(size, lhPct) {
+      const margin = getCanvasPadding();
       const lines = layoutLinesAtSize(textInput.value, size);
       const blockH = lines.length * size * (lhPct / 100);
-      return blockH <= (p5Instance.height - 2 * MARGIN);
+      return blockH <= (p5Instance.height - 2 * margin);
     }
 
     // True if `text` fits vertically at the current font size + line
     // height. Wrapping depends on size only; line height scales the block
-    // height. Same threshold (canvas height - 2*MARGIN) as the slider clamps.
+    // height. Same threshold (canvas height - 2*margin) as the slider clamps.
     function fitsVertically(text) {
+      const margin = getCanvasPadding();
       const lines = layoutLinesAtSize(text, state.fontSize);
       const blockH = lines.length * state.fontSize * (state.lineHeightPct / 100);
-      return blockH <= (p5Instance.height - 2 * MARGIN);
+      return blockH <= (p5Instance.height - 2 * margin);
     }
 
     // Longest prefix of `text` that fits vertically. Trims whole words from
@@ -741,17 +1238,18 @@
       currentLines = [];
       if (!fontInstance) return;
 
+      const margin = getCanvasPadding();
       const { lines, lineHeight } = layoutLines(textInput.value);
       const upm = fontInstance.unitsPerEm || font.unitsPerEm;
       const scale = state.fontSize / upm;
-      const firstBaseline = MARGIN + fontInstance.ascent * scale;
+      const firstBaseline = margin + fontInstance.ascent * scale;
 
       // Collect every (variation-applied) glyph contour as a polygon.
       const polys = [];
       for (let i = 0; i < lines.length; i++) {
         if (!lines[i]) continue;
         const baselineY = firstBaseline + i * lineHeight;
-        addLinePolygons(lines[i], MARGIN, baselineY, scale, polys);
+        addLinePolygons(lines[i], margin, baselineY, scale, polys);
       }
       if (!polys.length) return;
 
@@ -874,14 +1372,8 @@
         p.background('#F5F5F5');
 
         if (!font) {
-          // Placeholder until a font is uploaded.
-          p.push();
-          p.fill('#bababa');
-          p.textAlign(p.CENTER, p.CENTER);
-          p.textSize(22);
-          p.textFont('sans-serif');
-          p.text(PLACEHOLDER, p.width / 2, p.height / 2);
-          p.pop();
+          // No font yet: the empty-state caption/button/hint live in the
+          // HTML overlay, so the canvas just shows its plain background.
           return;
         }
 
@@ -897,11 +1389,21 @@
         }
       };
 
+      // p5 listens on the window, so mouse events also fire for clicks on
+      // the sidebar. Only presses that start ON the canvas count as a drag
+      // action — otherwise every sidebar click would push a no-op snapshot
+      // onto the undo stack and evict real history.
+      const mouseOnCanvas = () =>
+        p.mouseX >= 0 && p.mouseY >= 0 &&
+        p.mouseX <= p.width && p.mouseY <= p.height;
+
       // Cursor interaction: force is applied while the mouse button is
       // held and the cursor moves. p5 fires mouseDragged (not mouseMoved)
       // during a held-button drag, with accurate per-event velocity.
+      // Gated on pendingSnapshot so force is only applied during a drag
+      // that started on the canvas (and is therefore undoable).
       p.mouseDragged = () => {
-        if (!physicsActive) return;
+        if (!physicsActive || !pendingSnapshot) return;
         const vx = p.mouseX - p.pmouseX;
         const vy = p.mouseY - p.pmouseY;
         applyMouseForce(p.mouseX, p.mouseY, vx, vy);
@@ -910,7 +1412,7 @@
       // Undo/redo drag boundaries: snapshot BEFORE the push at press,
       // commit it to the undo stack at release.
       p.mousePressed = () => {
-        if (!physicsActive) return;
+        if (!physicsActive || !mouseOnCanvas()) return;
         pendingSnapshot = captureState();
       };
       p.mouseReleased = () => {
@@ -958,7 +1460,7 @@
     // =========================================================
     const uploadBtn = document.getElementById('upload-btn');
     const uploadControl = document.getElementById('upload-control');
-    const uploadOverlay = document.getElementById('upload-overlay');
+    const uploadOverlay = document.getElementById('empty-state');
     const fontInput = document.getElementById('font-input');
     const fontError = document.getElementById('font-error');
     const axesContainer = document.getElementById('axes-container');
@@ -976,37 +1478,44 @@
     const angleVal = document.getElementById('angle-val');
 
     const expandBtn = document.getElementById('expand-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const saveSettingsInput = document.getElementById('save-settings');
+    const resetSettingsBtn = document.getElementById('reset-settings-btn');
     const exportBtn = document.getElementById('export-btn');
     const resetPhysicsBtn = document.getElementById('reset-physics-btn');
     const physicsInputs = Object.keys(PHYSICS_DEFAULTS).map((key) =>
       document.getElementById(key)
     );
 
+    // Accordion step-cards.
+    const step1Card = document.getElementById('step1');
+    const step2Card = document.getElementById('step2');
+    const backToTextBtn = document.getElementById('back-to-text-btn');
+
+    // Show exactly one step expanded; the other collapses to its bar.
+    //   1 -> Step 1 (Set up the font) active, Step 2 inert muted bar.
+    //   2 -> Step 1 collapsed with the blue "go back" strip, Step 2 active.
+    function showStep(n) {
+      step1Card.classList.toggle('collapsed', n !== 1);
+      step2Card.classList.toggle('collapsed', n !== 2);
+    }
+
     // ---- Tier enable/disable ----------------------------------
     // Tier 1 includes the dynamically-created axis sliders.
     function tier1Controls() {
       return [
-        fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput, expandBtn,
+        fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput,
+        resetSettingsBtn, expandBtn,
         ...axesContainer.querySelectorAll('.axis-input'),
       ];
     }
     function setTier1Enabled(en) {
       tier1Controls().forEach((c) => (c.disabled = !en));
+      syncNumberDisabled();
     }
     function setTier2Enabled(en) {
       physicsInputs.forEach((i) => (i.disabled = !en));
       resetPhysicsBtn.disabled = !en;
       exportBtn.disabled = !en;
-    }
-
-    // Clear canvas is only meaningful when there's something to clear:
-    // typed text, or physics bodies on the canvas after Expand (text field
-    // is empty then, but the bodies still count).
-    function updateClearEnabled() {
-      const hasText = textInput.value.trim().length > 0;
-      clearBtn.disabled = !(hasText || physicsActive);
+      syncNumberDisabled();
     }
 
     // ---- Range slider fill --------------------------------------
@@ -1018,8 +1527,8 @@
       const max = parseFloat(el.max) || 100;
       const pct = ((parseFloat(el.value) - min) / (max - min)) * 100;
       el.style.background =
-        `linear-gradient(to right, #007CFF 0%, #007CFF ${pct}%,` +
-        ` #d8d8d8 ${pct}%, #d8d8d8 100%)`;
+        `linear-gradient(to right, var(--slider-filled) 0%, var(--slider-filled) ${pct}%,` +
+        ` var(--slider-track) ${pct}%, var(--slider-track) 100%)`;
     }
 
     // Every static range slider paints itself on input; axis sliders wire
@@ -1029,15 +1538,78 @@
       paintRangeFill(el);
     });
 
+    // ---- Editable number field paired with each slider ----------
+    // Each slider has a companion <input type="number"> showing/editing its
+    // value. The SLIDER stays the single source of truth for bounds: min,
+    // max and step are read from the slider element, so editing those in the
+    // HTML updates both. Committing the number (blur / Enter) clamps + snaps,
+    // writes the slider, and dispatches the slider's own 'input' event so ALL
+    // existing logic runs (rebuild, overflow clamps, fill repaint, physics).
+    // The slider handler then formats the final (possibly further-clamped)
+    // value back into the number field.
+    const numberPairs = [];
+    function wireNumberInput(numEl, sliderEl) {
+      numberPairs.push({ num: numEl, slider: sliderEl });
+      const commit = () => {
+        const min = parseFloat(sliderEl.min);
+        const max = parseFloat(sliderEl.max);
+        const step = parseFloat(sliderEl.step) || 1;
+        const raw = parseFloat(numEl.value);
+        // Reject non-numeric input: revert to the slider's current value.
+        if (Number.isNaN(raw)) { numEl.value = sliderEl.value; return; }
+        let v = Math.min(max, Math.max(min, raw));           // clamp
+        v = min + Math.round((v - min) / step) * step;       // snap to step
+        const decimals = (String(step).split('.')[1] || '').length;
+        v = Number(v.toFixed(decimals));                     // kill FP fuzz
+        sliderEl.value = String(v);
+        paintRangeFill(sliderEl);
+        // The slider's input handler writes the final value back into numEl.
+        sliderEl.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      numEl.addEventListener('blur', commit);
+      numEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); numEl.blur(); }
+      });
+    }
+
+    // Keep each number field's disabled state in lockstep with its slider.
+    function syncNumberDisabled() {
+      numberPairs.forEach(({ num, slider }) => { num.disabled = slider.disabled; });
+    }
+
+    // Wire the static (non-axis) number fields. Axis fields are wired as
+    // they're built in buildAxisSliders().
+    wireNumberInput(fontSizeVal, fontSizeInput);
+    wireNumberInput(lineHeightVal, lineHeightInput);
+    wireNumberInput(thicknessVal, thicknessInput);
+    wireNumberInput(gapVal, gapInput);
+    wireNumberInput(angleVal, angleInput);
+    Object.keys(PHYSICS_DEFAULTS).forEach((key) => {
+      wireNumberInput(document.getElementById(`${key}-val`), document.getElementById(key));
+    });
+
     // =========================================================
     // Font upload (Tier 0)
     // =========================================================
     uploadBtn.addEventListener('click', () => fontInput.click());
 
-    // Show the loaded font name on the button. Only the .label span text
-    // changes; the upload-simple icon (in the HTML) stays to its right.
+    // Combined-button icons (Phosphor, viewBox 0 0 256 256): upload-simple
+    // for the empty state, arrows-clockwise for the loaded/reload state.
+    const ICON_UPLOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>';
+    const ICON_RELOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>';
+
+    // Show the loaded font name on the button. Only the .btn-label span text
+    // changes; the divider + icon block to its right are left intact.
     function setUploadLabel(name) {
-      uploadBtn.querySelector('.label').textContent = name;
+      uploadBtn.querySelector('.btn-label').textContent = name;
+    }
+
+    // Swap the combined-button's icon between states without disturbing the
+    // divider or label. 'reload' = loaded (arrows-clockwise); anything else =
+    // empty (upload-simple).
+    function setUploadIcon(kind) {
+      uploadBtn.querySelector('.btn-icon').innerHTML =
+        kind === 'reload' ? ICON_RELOAD : ICON_UPLOAD;
     }
 
     // Shared font-loading path for both the file picker and drag-and-drop.
@@ -1059,33 +1631,59 @@
         if (typeof parsed.layout !== 'function' && parsed.fonts) {
           parsed = parsed.fonts[0];
         }
+        // Probe the paths the commit phase (and every later rebuild)
+        // relies on: shaping, metrics, and variation axes. A font that
+        // parses but has broken tables throws HERE, while the previously
+        // loaded font is still fully intact.
+        parsed.layout('x');
+        if (!(parsed.unitsPerEm > 0)) throw new Error('bad font metrics');
+        if (parsed.variationAxes && Object.keys(parsed.variationAxes).length) {
+          const defaults = {};
+          for (const [tag, ax] of Object.entries(parsed.variationAxes)) {
+            defaults[tag] = ax.default;
+          }
+          parsed.getVariation(defaults).layout('x');
+        }
       } catch (err) {
         showFontError();
         return;
       }
 
-      font = parsed;
-      fontError.hidden = true;
+      // If physics is running (we're on Step 2), roll the app back to Step 1
+      // before applying the new font — same teardown as "Go back to text
+      // settings" — so a font swap never leaves the app mid-physics. Done
+      // only after a clean parse, so a corrupt file leaves everything intact.
+      returnToStep1();
 
-      injectFontFace(file);
+      // The probe above makes a mid-commit throw very unlikely, but if one
+      // still happens, surface the error instead of dying silently with the
+      // UI half-updated.
+      try {
+        font = parsed;
+        fontError.hidden = true;
 
-      // First load: move the button off the canvas overlay into the left
-      // panel (below the logo) and hide the overlay. Idempotent on reload.
-      uploadControl.insertBefore(uploadBtn, fontInput);
-      uploadOverlay.style.display = 'none';
-      setUploadLabel(fontDisplayName(parsed) || file.name);
+        injectFontFace(file);
 
-      buildAxisSliders(parsed);
-      updateFontInstance();
+        // First load: move the button off the canvas overlay into the left
+        // panel (below the logo) and hide the overlay. Idempotent on reload.
+        uploadControl.insertBefore(uploadBtn, fontInput);
+        uploadOverlay.style.display = 'none';
+        setUploadLabel(fontDisplayName(parsed) || file.name);
+        setUploadIcon('reload'); // loaded state: clicking now reloads the font
 
-      setTier1Enabled(true);
-      textInput.hidden = false;
-      textInput.style.fontFamily = "'UploadedFont', sans-serif";
-      textInput.style.fontSize = state.fontSize + 'px';
-      applyVariationCSS();
-      textInput.focus();
-      rebuildPattern();
-      updateClearEnabled(); // font loaded but text still empty -> disabled
+        buildAxisSliders(parsed);
+        updateFontInstance();
+
+        setTier1Enabled(true);
+        textInput.hidden = false;
+        textInput.style.fontFamily = "'UploadedFont', sans-serif";
+        textInput.style.fontSize = state.fontSize + 'px';
+        applyVariationCSS();
+        textInput.focus();
+        rebuildPattern();
+      } catch (err) {
+        showFontError();
+      }
     }
 
     fontInput.addEventListener('change', async (e) => {
@@ -1146,6 +1744,13 @@
     function buildAxisSliders(f) {
       axesContainer.innerHTML = '';
       state.axes = {};
+      // Drop stale axis number-field pairs from a previous font so
+      // syncNumberDisabled() doesn't accumulate detached nodes.
+      for (let i = numberPairs.length - 1; i >= 0; i--) {
+        if (numberPairs[i].slider.classList.contains('axis-input')) {
+          numberPairs.splice(i, 1);
+        }
+      }
 
       const axes = f.variationAxes;
       if (!axes || !Object.keys(axes).length) return;
@@ -1160,15 +1765,27 @@
 
         const div = document.createElement('div');
         div.className = 'control';
-        // Build the label with DOM APIs only: the axis name and tag come
+
+        // Build the field row with DOM APIs only: the axis name and tag come
         // from the uploaded font file (untrusted), so they must never be
         // parsed as HTML.
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        const labelWrap = document.createElement('div');
+        labelWrap.className = 'label-wrap';
         const lab = document.createElement('label');
-        lab.textContent = `${label} `;
-        const valSpan = document.createElement('span');
-        valSpan.className = 'value';
-        valSpan.textContent = def;
-        lab.appendChild(valSpan);
+        lab.textContent = label;
+        lab.setAttribute('for', `axis-${tag}`);
+        labelWrap.appendChild(lab); // axes are unitless: no unit span
+        const numEl = document.createElement('input');
+        numEl.type = 'number';
+        numEl.className = 'num-input';
+        numEl.id = `axis-${tag}-val`;
+        numEl.min = min; numEl.max = max; numEl.step = step; numEl.value = def;
+        numEl.setAttribute('aria-label', `${label} value`);
+        row.appendChild(labelWrap);
+        row.appendChild(numEl);
+
         const input = document.createElement('input');
         input.type = 'range';
         input.min = min; input.max = max; input.step = step; input.value = def;
@@ -1176,20 +1793,22 @@
         input.id = `axis-${tag}`;
         input.dataset.tag = tag;
 
-        div.appendChild(lab);
+        div.appendChild(row);
         div.appendChild(input);
         axesContainer.appendChild(div);
-        paintRangeFill(input); // initial blue fill for the new slider
+        paintRangeFill(input); // initial accent fill for the new slider
 
         input.addEventListener('input', () => {
           const v = Number(input.value);
           state.axes[tag] = v;
-          valSpan.textContent = v;
+          numEl.value = v;
           paintRangeFill(input);
           updateFontInstance();
           applyVariationCSS();
           rebuildPattern();
         });
+
+        wireNumberInput(numEl, input); // editable axis value field
       }
     }
 
@@ -1207,6 +1826,38 @@
     function applyVariationCSS() {
       const parts = Object.entries(state.axes).map(([t, v]) => `"${t}" ${v}`);
       textInput.style.fontVariationSettings = parts.join(', ');
+    }
+
+    // Reset every variable-font axis slider (and its number field) back to
+    // the font's default, then rebuild the variation instance + caret CSS.
+    // No-op for static fonts.
+    function resetAxesToDefaults() {
+      if (!font || !font.variationAxes) return;
+      for (const [tag, ax] of Object.entries(font.variationAxes)) {
+        state.axes[tag] = ax.default;
+        const slider = document.getElementById(`axis-${tag}`);
+        const numEl = document.getElementById(`axis-${tag}-val`);
+        if (slider) { slider.value = ax.default; paintRangeFill(slider); }
+        if (numEl) numEl.value = ax.default;
+      }
+      updateFontInstance();
+      applyVariationCSS();
+    }
+
+    // Reset the five non-axis Tier-1 sliders (font size, line height,
+    // thickness, gap, angle) — plus their number fields and the caret's
+    // font metrics — to defaults. Shared by "Reset settings" and the
+    // Clear-to-defaults path. Does NOT touch axes, text, or physics.
+    function resetTier1Params() {
+      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.value = '150';
+      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.value = '120';
+      state.thickness = 3; thicknessInput.value = '3'; thicknessVal.value = '3';
+      state.gap = 3; gapInput.value = '3'; gapVal.value = '3';
+      state.angle = 0; angleInput.value = '0'; angleVal.value = '0';
+      textInput.style.fontSize = '150px';
+      textInput.style.lineHeight = '1.2';
+      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
+        .forEach(paintRangeFill);
     }
 
     // =========================================================
@@ -1233,7 +1884,7 @@
       } else {
         state.fontSize = requested;
       }
-      fontSizeVal.textContent = `${state.fontSize}px`;
+      fontSizeVal.value = state.fontSize;
       textInput.style.fontSize = state.fontSize + 'px';
       paintRangeFill(fontSizeInput); // reflect any clamp snap-back
       rebuildPattern();
@@ -1260,7 +1911,7 @@
       } else {
         state.lineHeightPct = requested;
       }
-      lineHeightVal.textContent = `${state.lineHeightPct}%`;
+      lineHeightVal.value = state.lineHeightPct;
       textInput.style.lineHeight = state.lineHeightPct / 100;
       paintRangeFill(lineHeightInput); // reflect any clamp snap-back
       rebuildPattern();
@@ -1268,19 +1919,19 @@
 
     thicknessInput.addEventListener('input', () => {
       state.thickness = Number(thicknessInput.value);
-      thicknessVal.textContent = `${state.thickness}px`;
+      thicknessVal.value = state.thickness;
       rebuildPattern();
     });
 
     gapInput.addEventListener('input', () => {
       state.gap = Number(gapInput.value);
-      gapVal.textContent = `${state.gap}px`;
+      gapVal.value = state.gap;
       rebuildPattern();
     });
 
     angleInput.addEventListener('input', () => {
       state.angle = Number(angleInput.value);
-      angleVal.textContent = `${state.angle}°`;
+      angleVal.value = state.angle;
       rebuildPattern();
     });
 
@@ -1302,12 +1953,13 @@
         textInput.setSelectionRange(pos, pos);
       }
       rebuildPattern();
-      updateClearEnabled();
     });
 
     // =========================================================
     // Expand: glyph outlines -> physics bodies
     // =========================================================
+    // "Go to physics" (formerly Expand): outline the glyphs into bodies and
+    // hand control to Step 2.
     expandBtn.addEventListener('click', () => {
       if (state.expanded || !font) return;
       rebuildPattern();
@@ -1317,11 +1969,47 @@
       undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
       state.expanded = true;
       physicsActive = true;
-      updateClearEnabled(); // bodies exist now, even though text is empty
 
       textInput.hidden = true;
       setTier1Enabled(false);
       setTier2Enabled(true);
+      showStep(2); // collapse Step 1 (with go-back strip), open Step 2
+    });
+
+    // Undo the expand and return to Step 1: tear the physics bodies down,
+    // un-hide the textarea, re-enable Tier 1, and swap the accordion back.
+    // The typed text and Tier-1 params were never touched by Expand (the
+    // textarea was only hidden), so they survive. No-op if not expanded.
+    // Shared by the "Go back to text settings" strip and by loadFontFile
+    // (loading a new font mid-physics rolls back here first).
+    function returnToStep1() {
+      if (!state.expanded && !physicsActive) return;
+      destroyPhysics();
+      physicsActive = false;
+      state.expanded = false;
+      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
+
+      textInput.hidden = false;
+      setTier1Enabled(true);
+      setTier2Enabled(false);
+      showStep(1);
+    }
+
+    // "Go back to text settings" (blue strip on the collapsed Step 1).
+    backToTextBtn.addEventListener('click', () => {
+      if (!state.expanded) return;
+      returnToStep1();
+      rebuildPattern(); // redraw the (still-intact) pattern from the text
+      textInput.focus();
+    });
+
+    // "Reset settings" (Step 1): restore every Tier-1 parameter — font size,
+    // line height, thickness, gap, angle, and the variable-font axes — to
+    // their defaults. The font stays loaded and the typed text is untouched.
+    resetSettingsBtn.addEventListener('click', () => {
+      resetTier1Params();
+      resetAxesToDefaults();
+      rebuildPattern();
     });
 
     // =========================================================
@@ -1361,68 +2049,11 @@
     });
 
     // =========================================================
-    // Clear canvas. Both branches stop physics and empty the text; the
-    // font is never unloaded here.
-    //   • Save settings CHECKED  -> keep every Tier 1 value; just clear text.
-    //   • Save settings UNCHECKED -> reset all parameters to defaults, but
-    //     keep the font, @font-face, axis sliders, and the upload button.
-    // =========================================================
-    clearBtn.addEventListener('click', () => {
-      // Both cases: stop physics, remove all bodies, empty the text,
-      // and clear the undo/redo history.
-      physicsActive = false;
-      destroyPhysics();
-      undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
-      state.expanded = false;
-      textInput.value = '';
-      lastGoodText = '';
-
-      // ---- Save settings CHECKED: clear text only, keep every value. ----
-      if (saveSettingsInput.checked) {
-        textInput.hidden = false;
-        setTier1Enabled(true);
-        setTier2Enabled(false);
-        textInput.focus();
-        rebuildPattern();
-        updateClearEnabled(); // nothing left to clear -> disabled
-        return;
-      }
-
-      // ---- Save settings UNCHECKED: reset all parameters to defaults. ----
-      // The font, @font-face, axis sliders, and the upload button are left
-      // untouched — the font can only be changed via the Upload button.
-
-      // Sliders + font size back to defaults.
-      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.textContent = '150px';
-      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.textContent = '120%';
-      state.thickness = 3; thicknessInput.value = '3'; thicknessVal.textContent = '3px';
-      state.gap = 3; gapInput.value = '3'; gapVal.textContent = '3px';
-      state.angle = 0; angleInput.value = '0'; angleVal.textContent = '0°';
-      textInput.style.fontSize = '150px';
-      textInput.style.lineHeight = '1.2';
-      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
-        .forEach(paintRangeFill);
-
-      // Physics back to defaults.
-      resetPhysicsToDefaults();
-
-      // Physics is stopped and Tier 2 is disabled, but the font stays loaded
-      // so Tier 1 controls remain enabled and the user can keep typing.
-      textInput.hidden = false;
-      setTier1Enabled(true);
-      setTier2Enabled(false);
-      textInput.focus();
-
-      rebuildPattern();
-      updateClearEnabled(); // nothing left to clear -> disabled
-    });
-
-    // =========================================================
     // Physics section wiring (unchanged behavior)
     // =========================================================
     function setPhysicsValue(key, value) {
       const decimals = PHYSICS_DEFAULTS[key].decimals;
-      document.getElementById(`${key}-val`).textContent = value.toFixed(decimals);
+      document.getElementById(`${key}-val`).value = value.toFixed(decimals);
       if (key === 'mouseForceScale') {
         physicsConfig.mouseForceScale = value; // read live by applyMouseForce
       } else {
@@ -1448,8 +2079,35 @@
 
     resetPhysicsBtn.addEventListener('click', resetPhysicsToDefaults);
 
-    // Initial state: nothing to clear yet (placeholder / empty text).
-    updateClearEnabled();
+    // =========================================================
+    // Credits popover — opens above the footer button; any click outside
+    // dismisses it via a one-shot document listener.
+    // =========================================================
+    const creditsBtn = document.getElementById('credits-btn');
+    const creditsPopover = document.getElementById('credits-popover');
+
+    function closeCredits() {
+      creditsPopover.hidden = true;
+      document.removeEventListener('click', closeCredits);
+    }
+
+    creditsBtn.addEventListener('click', (e) => {
+      // Keep the opening click from bubbling to the document listener we're
+      // about to add (which would immediately close the popover).
+      e.stopPropagation();
+      if (creditsPopover.hidden) {
+        creditsPopover.hidden = false;
+        document.addEventListener('click', closeCredits);
+      } else {
+        closeCredits();
+      }
+    });
+    // Clicks inside the popover (including its links) don't reach the
+    // document listener, so the popover stays open while a link opens.
+    creditsPopover.addEventListener('click', (e) => e.stopPropagation());
+
+    // Initial state: Step 1 expanded, Step 2 collapsed inert.
+    showStep(1);
   </script>
 </body>
 </html>
