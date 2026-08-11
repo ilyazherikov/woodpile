@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
+  <!-- Coloris colour picker (background + text fields) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.css"/>
+
   <!-- ====================== Styles ====================== -->
   <style>
     * { box-sizing: border-box; }
@@ -110,6 +113,17 @@
       --btn-combined-pad-r: 12px;
       --btn-combined-pad-v: 12px;
       --btn-combined-divider-pad-l: 4px;
+      /* segmented control */
+      --seg-default-bg: #ffffff;
+      --seg-selected-bg: #148bfd;
+      --seg-selected-contents: #ffffff;
+      --seg-default-contents: #000c14;
+      --seg-disabled-bg: #f5f5f5;
+      --seg-disabled-contents: #707070;
+      --radius-segmented: 8px;
+      /* common settings block spacing */
+      --common-settings-margin: 16px;
+      --input-row-margin: 8px;
     }
 
     html, body {
@@ -382,7 +396,7 @@
     /* Editable number field paired with each slider. */
     .num-input {
       flex: 0 0 auto;
-      width: 48px;
+      width: 56px;
       text-align: right;
       background: var(--input-bg);
       border: 1px solid var(--input-border);
@@ -405,6 +419,128 @@
     .num-input::-webkit-outer-spin-button,
     .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .num-input { -moz-appearance: textfield; appearance: textfield; }
+
+    /* ===== Common settings block (pattern selector + colour inputs) =====
+       Sits between the upload control and Step 1. Two rows, 16px apart. */
+    #common-settings {
+      display: flex;
+      flex-direction: column;
+      gap: var(--common-settings-margin);
+      margin-bottom: var(--blocks-spacing);
+    }
+
+    /* ---- Segmented control (shared: pattern selector + alignment) ---- */
+    .segmented-control {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      background: var(--seg-default-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-segmented);
+      overflow: hidden;
+    }
+    .seg-item {
+      position: relative;
+      flex: 1 0 0;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border: none;
+      background: transparent;
+      color: var(--seg-default-contents);
+      cursor: pointer;
+    }
+    .seg-item svg {
+      width: 20px;
+      height: 20px;
+      flex: 0 0 auto;        /* prevent flex from stretching the icon */
+      display: block;
+    }
+    /* Thin 1px / 22px divider between adjacent segments. */
+    .seg-item + .seg-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1px;
+      height: 22px;
+      background: var(--input-border);
+    }
+    .seg-item.selected {
+      background: var(--seg-selected-bg);
+      color: var(--seg-selected-contents);
+    }
+    /* Suppress the divider on either edge of a selected segment. */
+    .seg-item.selected::before,
+    .seg-item.selected + .seg-item::before { display: none; }
+    /* Disabled segmented control (the pattern selector is a disabled stub
+       for now; selection + wiring land in a later step). */
+    .segmented-control[aria-disabled="true"] { background: var(--seg-disabled-bg); }
+    .segmented-control[aria-disabled="true"] .seg-item {
+      color: var(--seg-disabled-contents);
+      cursor: default;
+    }
+    .segmented-control[aria-disabled="true"] .seg-item.selected {
+      background: var(--seg-selected-bg);
+      color: var(--seg-selected-contents);
+    }
+    /* Alignment selector shares the card's row rhythm with the sliders. */
+    #align-selector { margin-bottom: var(--card-row-margin); }
+
+    /* ---- Colour settings (Background + Text). Markup/styles only;
+       Coloris wiring + recolor behaviour arrive in step 3. ---- */
+    .color-settings {
+      display: flex;
+      gap: var(--input-row-margin);
+      width: 100%;
+    }
+    .combined-input-group {
+      flex: 1 0 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .combined-input-group label {
+      font: 500 14px/18px 'Inter';
+      color: var(--input-label);
+      padding-left: 2px;
+    }
+    .combined-input {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+    }
+    .hex-input {
+      flex: 1 0 0;
+      min-width: 0;
+      height: 32px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-right: none;
+      border-radius: var(--radius-input) 0 0 var(--radius-input);
+      padding: 4px 8px;
+      font: 500 14px/18px 'Inter';
+      color: var(--input-text);
+    }
+    .swatch {
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      border: 1px solid var(--input-border);
+      border-radius: 0 var(--radius-input) var(--radius-input) 0;
+      cursor: pointer;
+      padding: 0;
+    }
+    /* Coloris (wrap:true) wraps each .hex-input in a .clr-field and injects
+       its own thumbnail button. Hide that thumbnail — the design uses its own
+       square .swatch — and make the wrapper layout-neutral so the hex input
+       sits in the flex row exactly as before. */
+    .clr-field button { display: none !important; }
+    .combined-input .clr-field { display: contents; }
 
     /* Custom range sliders: accent fill + handle over a light-blue track,
        no border/contour. WebKit fill is painted via a JS gradient
@@ -743,6 +879,46 @@
         <div class="error" id="font-error" hidden></div>
       </div>
 
+      <!-- ===== Common settings (Tier 0) =====
+           Pattern selector + colour inputs shared across steps. Everything
+           here is a markup/style stub: the pattern selector is disabled and
+           the colour inputs are inert. Coloris + recolor wiring land in a
+           later step. -->
+      <div id="common-settings">
+        <!-- Row A: pattern selector. STUB — disabled; placeholder icons and
+             selection wiring are added in a later step. -->
+        <div class="segmented-control" id="pattern-selector" aria-disabled="true">
+          <button class="seg-item selected" disabled aria-label="Line">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="10" width="14" height="4" rx="1"/></svg>
+          </button>
+          <button class="seg-item" disabled aria-label="Circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
+          </button>
+          <button class="seg-item" disabled aria-label="Diamond">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="7.76" y="7.76" width="8.49" height="8.49" rx="1" transform="rotate(45 12 12)"/></svg>
+          </button>
+        </div>
+
+        <!-- Row B: colour settings (Background + Text). INERT — no Coloris,
+             no recolor yet (wired in step 3). -->
+        <div class="color-settings">
+          <div class="combined-input-group">
+            <label for="bg-hex">Background</label>
+            <div class="combined-input">
+              <input type="text" class="hex-input" id="bg-hex" data-coloris data-coloris-format="hex" value="#F5F5F5" />
+              <button class="swatch" id="bg-swatch" style="background:#F5F5F5"></button>
+            </div>
+          </div>
+          <div class="combined-input-group">
+            <label for="text-hex">Text</label>
+            <div class="combined-input">
+              <input type="text" class="hex-input" id="text-hex" data-coloris data-coloris-format="hex" value="#000C14" />
+              <button class="swatch" id="text-swatch" style="background:#000C14"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ===== Step 1: Set up the font (Tier 1) =====
            Expanded initially; collapses to a muted bar (with the blue
            "go back" strip) once Go to physics has run. -->
@@ -752,6 +928,20 @@
           <span class="step-title">Set up the font</span>
         </div>
         <div class="step-body">
+          <!-- Text alignment (Tier 1). MARKUP ONLY — inert; default is
+               left. Click behaviour is wired in a later step. -->
+          <div class="segmented-control" id="align-selector">
+            <button class="seg-item selected" data-align="left" aria-label="Align left">
+              <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M32,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H40A8,8,0,0,1,32,64Zm8,48H168a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm176,24H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm-48,40H40a8,8,0,0,0,0,16H168a8,8,0,0,0,0-16Z"/></svg>
+            </button>
+            <button class="seg-item" data-align="center" aria-label="Align center">
+              <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M32,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H40A8,8,0,0,1,32,64ZM64,96a8,8,0,0,0,0,16H192a8,8,0,0,0,0-16Zm152,40H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm-24,40H64a8,8,0,0,0,0,16H192a8,8,0,0,0,0-16Z"/></svg>
+            </button>
+            <button class="seg-item" data-align="right" aria-label="Align right">
+              <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M32,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H40A8,8,0,0,1,32,64ZM216,96H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,40H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm0,40H88a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>
+            </button>
+          </div>
+
           <div class="control">
             <div class="field-row">
               <div class="label-wrap">
@@ -937,6 +1127,7 @@
   <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"
           integrity="sha384-OqQP3UcU7efkEYDRjGmQou2uEvzGFGRtwdYXTjnupeB9cWogSgQ4BOhyklFBYbBR"
           crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.js"></script>
 
   <!-- ====================== App (ES module) ====================== -->
   <script type="module">
@@ -977,6 +1168,9 @@
       thickness: 3,
       gap: 3,
       angle: 0,          // pattern rotation in degrees (0 = horizontal)
+      align: 'left',     // 'left' | 'center' | 'right' — per-line alignment
+      bgColor: '#F5F5F5',   // canvas background (cross-step, user-set)
+      textColor: '#000C14', // pattern fill    (cross-step, user-set)
       axes: {},          // { axisTag: value } for variable fonts
       expanded: false,
     };
@@ -1112,6 +1306,15 @@
     // Text layout
     // =========================================================
 
+    // Rendered width of `str` in canvas px at `size`, from the font's own
+    // glyph metrics. Shared by the word-wrap logic and the alignment offset
+    // so both measure identically (same wrap widths -> matching layout).
+    function widthPx(str, size) {
+      if (!str) return 0;
+      const upm = fontInstance.unitsPerEm || font.unitsPerEm;
+      return (fontInstance.layout(str).advanceWidth * size) / upm;
+    }
+
     // Greedy word-wrap the text into lines that fit the available
     // width, honoring explicit newlines. Returns { lines, lineHeight,
     // height }. Width is measured with the font's own glyph metrics.
@@ -1122,12 +1325,6 @@
     function layoutLinesAtSize(text, size) {
       const margin = getCanvasPadding();
       const availW = p5Instance.width - 2 * margin;
-      // Width of `str` in canvas px at the given size.
-      const widthPx = (str) => {
-        if (!str) return 0;
-        const upm = fontInstance.unitsPerEm || font.unitsPerEm;
-        return (fontInstance.layout(str).advanceWidth * size) / upm;
-      };
       const out = [];
 
       for (const para of text.split('\n')) {
@@ -1138,11 +1335,11 @@
           // A word too wide to fit on its own line is broken character
           // by character, mirroring the textarea's word-break: break-word
           // so the caret and the rendered glyphs stay in sync.
-          if (widthPx(word) > availW) {
+          if (widthPx(word, size) > availW) {
             if (cur !== '') { out.push(cur); cur = ''; }
             let chunk = '';
             for (const ch of word) {
-              if (chunk !== '' && widthPx(chunk + ch) > availW) {
+              if (chunk !== '' && widthPx(chunk + ch, size) > availW) {
                 out.push(chunk);
                 chunk = ch;
               } else {
@@ -1153,7 +1350,7 @@
             continue;
           }
           const test = cur === '' ? word : cur + ' ' + word;
-          if (cur !== '' && widthPx(test) > availW) {
+          if (cur !== '' && widthPx(test, size) > availW) {
             out.push(cur);
             cur = word;
           } else {
@@ -1245,11 +1442,21 @@
       const firstBaseline = margin + fontInstance.ascent * scale;
 
       // Collect every (variation-applied) glyph contour as a polygon.
+      // Each line's X origin is offset by its rendered width vs the available
+      // width so the block aligns left / center / right. widthPx() is the
+      // same measurement the wrap logic uses, so the end of a right-aligned
+      // line lands exactly on the right margin.
+      const availW = p5Instance.width - 2 * margin;
       const polys = [];
       for (let i = 0; i < lines.length; i++) {
         if (!lines[i]) continue;
         const baselineY = firstBaseline + i * lineHeight;
-        addLinePolygons(lines[i], margin, baselineY, scale, polys);
+        const lineW = widthPx(lines[i], state.fontSize);
+        let originX = margin; // left (default)
+        if (state.align === 'center') originX = margin + (availW - lineW) / 2;
+        else if (state.align === 'right') originX = margin + (availW - lineW);
+        if (originX < margin) originX = margin; // never offset left of the margin
+        addLinePolygons(lines[i], originX, baselineY, scale, polys);
       }
       if (!polys.length) return;
 
@@ -1369,7 +1576,7 @@
         // Step the simulation once per frame, before drawing.
         if (physicsActive) updatePhysics();
 
-        p.background('#F5F5F5');
+        p.background(state.bgColor);
 
         if (!font) {
           // No font yet: the empty-state caption/button/hint live in the
@@ -1377,7 +1584,7 @@
           return;
         }
 
-        p.fill('#070707');
+        p.fill(state.textColor);
         p.noStroke();
         const arr = physicsActive ? getBodies() : currentLines;
         for (const r of arr) {
@@ -1505,6 +1712,7 @@
         fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput,
         resetSettingsBtn, expandBtn,
         ...axesContainer.querySelectorAll('.axis-input'),
+        ...document.querySelectorAll('#align-selector .seg-item'),
       ];
     }
     function setTier1Enabled(en) {
@@ -1516,6 +1724,19 @@
       resetPhysicsBtn.disabled = !en;
       exportBtn.disabled = !en;
       syncNumberDisabled();
+    }
+    // Colour controls aren't tier-specific: enabled as soon as a font loads
+    // and kept enabled across both steps (only the empty state disables them).
+    function colorControls() {
+      return [
+        document.getElementById('bg-hex'),
+        document.getElementById('text-hex'),
+        document.getElementById('bg-swatch'),
+        document.getElementById('text-swatch'),
+      ];
+    }
+    function setColorControlsEnabled(en) {
+      colorControls().forEach((c) => { if (c) c.disabled = !en; });
     }
 
     // ---- Range slider fill --------------------------------------
@@ -1675,9 +1896,11 @@
         updateFontInstance();
 
         setTier1Enabled(true);
+        setColorControlsEnabled(true);
         textInput.hidden = false;
         textInput.style.fontFamily = "'UploadedFont', sans-serif";
         textInput.style.fontSize = state.fontSize + 'px';
+        textInput.style.textAlign = state.align; // caret follows the alignment
         applyVariationCSS();
         textInput.focus();
         rebuildPattern();
@@ -1854,10 +2077,26 @@
       state.thickness = 3; thicknessInput.value = '3'; thicknessVal.value = '3';
       state.gap = 3; gapInput.value = '3'; gapVal.value = '3';
       state.angle = 0; angleInput.value = '0'; angleVal.value = '0';
+      state.align = 'left';
+      document.querySelectorAll('#align-selector .seg-item')
+        .forEach((b) => b.classList.toggle('selected', b.dataset.align === 'left'));
+      textInput.style.textAlign = 'left';
       textInput.style.fontSize = '150px';
       textInput.style.lineHeight = '1.2';
       [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
         .forEach(paintRangeFill);
+      // Colours reset to their defaults too. Update state + the fields +
+      // swatches, then dispatch 'input' so Coloris refreshes its thumbnail
+      // after the programmatic value change.
+      state.bgColor = '#F5F5F5';
+      state.textColor = '#000C14';
+      bgHex.value = '#F5F5F5';
+      textHex.value = '#000C14';
+      bgSwatch.style.background = state.bgColor;
+      textSwatch.style.background = state.textColor;
+      bgHex.dispatchEvent(new Event('input', { bubbles: true }));
+      textHex.dispatchEvent(new Event('input', { bubbles: true }));
+      rebuildPattern(); // repaint the canvas with the reset colours
     }
 
     // =========================================================
@@ -1990,6 +2229,7 @@
       undoStack.length = 0; redoStack.length = 0; pendingSnapshot = null;
 
       textInput.hidden = false;
+      textInput.style.textAlign = state.align; // re-sync caret with alignment
       setTier1Enabled(true);
       setTier2Enabled(false);
       showStep(1);
@@ -2012,6 +2252,83 @@
       rebuildPattern();
     });
 
+    // ---- Alignment selector (Tier 1) ----
+    // A segment sets the per-line alignment for both the canvas text layout
+    // and the transparent textarea, so the caret sits where the glyphs are
+    // drawn. Inert while disabled (empty state / Step 2).
+    document.querySelectorAll('#align-selector .seg-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        const align = btn.dataset.align; // 'left' | 'center' | 'right'
+        state.align = align;
+        document.querySelectorAll('#align-selector .seg-item')
+          .forEach((b) => b.classList.toggle('selected', b === btn));
+        textInput.style.textAlign = align; // keep the caret with the glyphs
+        rebuildPattern();
+      });
+    });
+
+    // ---- Colour pickers (Background + Text) — cross-step ----
+    // Coloris drives both hex fields; each paired swatch opens the picker for
+    // its field. The colours live in state and are read every frame by
+    // p.draw (and by SVG export), so changing one recolours Step 1 and Step 2
+    // (physics) alike — the physics bodies share the same p.fill(textColor).
+    // No explicit redraw is needed: p5's draw loop runs continuously.
+    const bgHex = document.getElementById('bg-hex');
+    const textHex = document.getElementById('text-hex');
+    const bgSwatch = document.getElementById('bg-swatch');
+    const textSwatch = document.getElementById('text-swatch');
+
+    // Accept #RGB or #RRGGBB (leading # optional); return a normalized hex
+    // string, or null while the value is an incomplete/invalid partial.
+    function normalizeHex(str) {
+      if (!str) return null;
+      let s = str.trim();
+      if (s[0] !== '#') s = '#' + s;
+      return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s) ? s : null;
+    }
+
+    // Coloris binds via the data-coloris attribute on each hex input (set in
+    // the HTML), with data-coloris-format="hex" for output. No JS Coloris({})
+    // config call — it throws on this build and the attribute alone is
+    // sufficient. wrap defaults to true, so Coloris wraps each .hex-input in a
+    // .clr-field with its own thumbnail button; we hide that thumbnail in CSS
+    // and use the design's own square swatch as the trigger (below).
+
+    // Shared appliers: normalize -> set state -> paint swatch -> rebuild the
+    // canvas. Bound to BOTH 'input' (live as the user picks / types) and
+    // 'change' (Coloris fires this on close), so a picked value is caught
+    // reliably however Coloris dispatches it. Invalid partials are ignored.
+    function applyBg() {
+      const v = normalizeHex(bgHex.value);
+      if (v) { state.bgColor = v; bgSwatch.style.background = v; rebuildPattern(); }
+    }
+    function applyText() {
+      const v = normalizeHex(textHex.value);
+      if (v) { state.textColor = v; textSwatch.style.background = v; rebuildPattern(); }
+    }
+    bgHex.addEventListener('input', applyBg);
+    bgHex.addEventListener('change', applyBg);
+    textHex.addEventListener('input', applyText);
+    textHex.addEventListener('change', applyText);
+
+    // Show the current colours on the swatches at startup.
+    bgSwatch.style.background = state.bgColor;
+    textSwatch.style.background = state.textColor;
+
+    // Each swatch opens Coloris on its paired field: with wrap:true Coloris
+    // opens on a click of the wrapped field. No-op while disabled: the swatch
+    // button and the hex input are both disabled in the empty state (via
+    // setColorControlsEnabled).
+    bgSwatch.addEventListener('click', () => {
+      if (bgHex.disabled) return;
+      bgHex.click();
+    });
+    textSwatch.addEventListener('click', () => {
+      if (textHex.disabled) return;
+      textHex.click();
+    });
+
     // =========================================================
     // SVG export — current positions & rotations of every rect.
     // =========================================================
@@ -2022,7 +2339,7 @@
       const h = p5Instance.height;
       // Background rectangle first, behind all pattern rectangles.
       let rects =
-        `  <rect x="0" y="0" width="${w}" height="${h}" fill="#F5F5F5" />\n`;
+        `  <rect x="0" y="0" width="${w}" height="${h}" fill="${state.bgColor}" />\n`;
 
       for (const b of getBodies()) {
         const x = b.x - b.w / 2;
@@ -2031,7 +2348,7 @@
         rects +=
           `  <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" ` +
           `width="${b.w.toFixed(2)}" height="${b.h.toFixed(2)}" ` +
-          `fill="#070707" ` +
+          `fill="${state.textColor}" ` +
           `transform="rotate(${deg.toFixed(2)} ${b.x.toFixed(2)} ${b.y.toFixed(2)})" />\n`;
       }
 
@@ -2106,8 +2423,14 @@
     // document listener, so the popover stays open while a link opens.
     creditsPopover.addEventListener('click', (e) => e.stopPropagation());
 
-    // Initial state: Step 1 expanded, Step 2 collapsed inert.
+    // Initial state: Step 1 expanded, Step 2 collapsed inert. Nothing is
+    // interactive until a font loads — only the Upload button + drag-drop
+    // work in the empty state. (The pattern selector stays permanently
+    // disabled via its markup regardless.)
     showStep(1);
+    setTier1Enabled(false);
+    setTier2Enabled(false);
+    setColorControlsEnabled(false);
   </script>
 </body>
 </html>
