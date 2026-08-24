@@ -58,6 +58,7 @@
       /* number input states */
       --input-unit-hover: #7bb1ea;
       --input-border-hover: #b9d9fe;
+      --input-bg-hover: #ffffff;
       --input-bg-active: #ffffff;
       --input-border-active: #a5cffd;
       --input-unit-active: #7bb1ea;
@@ -76,6 +77,10 @@
       /* canvas */
       --canvas-bg: #f5f5f5;
       --canvas-text: #000000;
+      /* text selection + caret — recomputed from the canvas background
+         luminance in JS (updateSelectionColor); defaults match the light bg. */
+      --selection-bg: rgba(0, 12, 20, 0.18);
+      --caret-color: #000c14;
       /* radii */
       --radius-card: 20px;
       --radius-button: 8px;
@@ -95,7 +100,7 @@
       --input-unit-margin: 4px;
       --input-pad-h: 8px;
       --input-pad-v: 4px;
-      --social-buttons-margin: 12px;
+      --social-buttons-margin: 8px;
       --canvas-padding: 48px;   /* single source of truth: drives BOTH the
                                    #text-input padding and the JS canvas text
                                    margin (getCanvasPadding), so they can't
@@ -120,6 +125,8 @@
       --seg-default-contents: #000c14;
       --seg-disabled-bg: #f5f5f5;
       --seg-disabled-contents: #707070;
+      --seg-selected-bg-hover: #0882f7;
+      --seg-default-bg-hover: #ebf5fe;
       --radius-segmented: 8px;
       /* common settings block spacing */
       --common-settings-margin: 16px;
@@ -409,7 +416,10 @@
       color: var(--input-text);
       transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
-    .num-input:not(:disabled):hover { border-color: var(--input-border-hover); }
+    .num-input:not(:disabled):hover {
+      border-color: var(--input-border-hover);
+      background: var(--input-bg-hover);
+    }
     .num-input:not(:disabled):focus {
       background: var(--input-bg-active);
       border-color: var(--input-border-active);
@@ -473,6 +483,10 @@
       background: var(--seg-selected-bg);
       color: var(--seg-selected-contents);
     }
+    /* Hover background for enabled segments (align selector). The disabled
+       pattern selector never triggers these — kept for consistency/future. */
+    .seg-item:not(.selected):not(:disabled):hover { background: var(--seg-default-bg-hover); }
+    .seg-item.selected:not(:disabled):hover { background: var(--seg-selected-bg-hover); }
     /* Suppress the divider on either edge of a selected segment. */
     .seg-item.selected::before,
     .seg-item.selected + .seg-item::before { display: none; }
@@ -644,7 +658,7 @@
       outline: 0;
       background: transparent;
       color: transparent;
-      caret-color: #070707;
+      caret-color: var(--caret-color, #070707);
       font-family: 'UploadedFont', sans-serif;
       font-size: 150px;
       line-height: 1.2;
@@ -654,7 +668,7 @@
       word-break: break-word;
       z-index: 2;
     }
-    #text-input::selection { background: rgba(7, 7, 7, 0.12); }
+    #text-input::selection { background: var(--selection-bg, rgba(7, 7, 7, 0.12)); }
 
     /* Empty state: one centred block (caption + upload button + drop hint)
        shown on the canvas while no font is loaded. Centred both axes.
@@ -741,13 +755,15 @@
        cut-out reveals whatever is behind. The <a> wrapper must never paint a
        background, or it would fill the hole. */
     #icon-behance,
-    #icon-linkedin {
+    #icon-linkedin,
+    #icon-telegram {
       display: block;
       background: none;
     }
     /* Disc color by state; the cut-out logo stays transparent throughout. */
     #icon-behance svg,
-    #icon-linkedin svg {
+    #icon-linkedin svg,
+    #icon-telegram svg {
       display: block;
       width: 40px;
       height: 40px;
@@ -755,9 +771,11 @@
       transition: color 0.12s ease;
     }
     #icon-behance:hover svg,
-    #icon-linkedin:hover svg { color: var(--social-bg-hover); }
+    #icon-linkedin:hover svg,
+    #icon-telegram:hover svg { color: var(--social-bg-hover); }
     #icon-behance:active svg,
-    #icon-linkedin:active svg { color: var(--social-bg-pressed); }
+    #icon-linkedin:active svg,
+    #icon-telegram:active svg { color: var(--social-bg-pressed); }
 
     /* Mobile block screen — shown only on narrow viewports */
     #mobile-block {
@@ -812,12 +830,14 @@
     /* Knock-out badges (mobile): same as desktop — color the path, never
        paint the wrapper. */
     #mobile-icon-behance,
-    #mobile-icon-linkedin {
+    #mobile-icon-linkedin,
+    #mobile-icon-telegram {
       display: block;
       background: none;
     }
     #mobile-icon-behance svg,
-    #mobile-icon-linkedin svg {
+    #mobile-icon-linkedin svg,
+    #mobile-icon-telegram svg {
       display: block;
       width: 60px;
       height: 60px;
@@ -825,9 +845,11 @@
       transition: color 0.12s ease;
     }
     #mobile-icon-behance:hover svg,
-    #mobile-icon-linkedin:hover svg { color: var(--social-bg-hover); }
+    #mobile-icon-linkedin:hover svg,
+    #mobile-icon-telegram:hover svg { color: var(--social-bg-hover); }
     #mobile-icon-behance:active svg,
-    #mobile-icon-linkedin:active svg { color: var(--social-bg-pressed); }
+    #mobile-icon-linkedin:active svg,
+    #mobile-icon-telegram:active svg { color: var(--social-bg-pressed); }
   </style>
 </head>
 
@@ -852,6 +874,9 @@
       </a>
       <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="mobile-icon-linkedin">
         <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
+      </a>
+      <a href="https://t.me/oilplant" target="_blank" id="mobile-icon-telegram">
+        <svg viewBox="0 0 32 32" fill="none" role="img" aria-label="Telegram"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 0C24.8366 0 32 7.16344 32 16C32 24.8366 24.8366 32 16 32C7.16344 32 0 24.8366 0 16C0 7.16344 7.16344 0 16 0ZM22.542 9.63184C21.9402 9.64244 21.0166 9.96339 16.5732 11.8115C15.017 12.4588 11.9065 13.7989 7.24219 15.8311C6.48506 16.1322 6.08798 16.4268 6.05176 16.7148C5.98241 17.268 6.7793 17.4399 7.78125 17.7656C8.59818 18.0312 9.69727 18.3421 10.2686 18.3545C10.7867 18.3656 11.3654 18.1523 12.0039 17.7139C16.3579 14.7748 18.6071 13.2875 18.752 13.2529C18.8516 13.2303 18.9904 13.202 19.084 13.2852C19.1773 13.3684 19.1681 13.5261 19.1582 13.5684C19.0763 13.9083 14.9845 17.6294 14.749 17.874C13.8489 18.8089 12.8255 19.3812 14.4043 20.4219C15.7712 21.3226 16.5674 21.8982 17.9756 22.8213C18.8753 23.4111 19.5809 24.1097 20.5098 24.0244C20.9373 23.9851 21.3792 23.5835 21.6035 22.3848C22.1336 19.5511 23.1752 13.4108 23.416 10.8809C23.437 10.6593 23.4109 10.3754 23.3896 10.251C23.3683 10.1266 23.3235 9.94954 23.1621 9.81836C22.9705 9.66289 22.6745 9.62954 22.542 9.63184Z" fill="currentColor"/></svg>
       </a>
     </div>
   </div>
@@ -1086,11 +1111,16 @@
           <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
             <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
           </a>
+          <!-- Telegram: same knock-out disc as above (from Figma); fill-rule
+               /clip-rule="evenodd" cut the paper-plane out of the disc. -->
+          <a href="https://t.me/oilplant" target="_blank" id="icon-telegram">
+            <svg viewBox="0 0 32 32" fill="none" role="img" aria-label="Telegram"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 0C24.8366 0 32 7.16344 32 16C32 24.8366 24.8366 32 16 32C7.16344 32 0 24.8366 0 16C0 7.16344 7.16344 0 16 0ZM22.542 9.63184C21.9402 9.64244 21.0166 9.96339 16.5732 11.8115C15.017 12.4588 11.9065 13.7989 7.24219 15.8311C6.48506 16.1322 6.08798 16.4268 6.05176 16.7148C5.98241 17.268 6.7793 17.4399 7.78125 17.7656C8.59818 18.0312 9.69727 18.3421 10.2686 18.3545C10.7867 18.3656 11.3654 18.1523 12.0039 17.7139C16.3579 14.7748 18.6071 13.2875 18.752 13.2529C18.8516 13.2303 18.9904 13.202 19.084 13.2852C19.1773 13.3684 19.1681 13.5261 19.1582 13.5684C19.0763 13.9083 14.9845 17.6294 14.749 17.874C13.8489 18.8089 12.8255 19.3812 14.4043 20.4219C15.7712 21.3226 16.5674 21.8982 17.9756 22.8213C18.8753 23.4111 19.5809 24.1097 20.5098 24.0244C20.9373 23.9851 21.3792 23.5835 21.6035 22.3848C22.1336 19.5511 23.1752 13.4108 23.416 10.8809C23.437 10.6593 23.4109 10.3754 23.3896 10.251C23.3683 10.1266 23.3235 9.94954 23.1621 9.81836C22.9705 9.66289 22.6745 9.62954 22.542 9.63184Z" fill="currentColor"/></svg>
+          </a>
         </div>
         <div class="credits-wrap">
           <button type="button" id="credits-btn">Credits</button>
           <div id="credits-popover" hidden>
-            <p>Idea and realization: <a href="https://t.me/oilplant" target="_blank" rel="noopener">Ilya Zherikov</a>, coding: <a href="https://claude.com/product/claude-code" target="_blank" rel="noopener">Claude Code</a></p>
+            <p>Idea and realization: Ilya Zherikov, coding: Claude Code</p>
             <p>UX/UI: <a href="https://www.linkedin.com/in/bmbl/" target="_blank" rel="noopener">Artyom Rusakov</a></p>
             <p>Valuable feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
           </div>
@@ -1662,6 +1692,34 @@
       }
     });
 
+    // Cmd+Shift+.  / Cmd+Shift+,  nudge the font size by ±1px (Figma/Adobe).
+    // Drives the slider exactly like a manual drag — set its value and
+    // dispatch 'input' — so the existing handler's overflow clamp, number-
+    // field sync and slider-fill repaint all apply, with nothing duplicated.
+    window.addEventListener('keydown', (e) => {
+      if (!(e.metaKey && e.shiftKey)) return;
+      // The Cmd+Shift combo already disambiguates from plain typing, so the
+      // shortcut works while the cursor is in the canvas text field (like
+      // Figma/Illustrator). Only skip a hex colour field, where a stray
+      // Cmd+Shift shouldn't nudge the slider mid-edit.
+      if (document.activeElement?.classList?.contains('hex-input')) return;
+      if (fontSizeInput.disabled) return;
+
+      let delta = 0;
+      if (e.code === 'Period') delta = 1;
+      else if (e.code === 'Comma') delta = -1;
+      if (delta === 0) return;
+
+      e.preventDefault(); // stop the browser's own shortcut, if any
+      const min = parseInt(fontSizeInput.min, 10);
+      const max = parseInt(fontSizeInput.max, 10);
+      const next = Math.min(max, Math.max(min, state.fontSize + delta));
+      if (next === state.fontSize) return;
+
+      fontSizeInput.value = next;
+      fontSizeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
     // =========================================================
     // Control panel wiring
     // =========================================================
@@ -1789,7 +1847,22 @@
       };
       numEl.addEventListener('blur', commit);
       numEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); numEl.blur(); }
+        if (e.key === 'Enter') { e.preventDefault(); numEl.blur(); return; }
+
+        // Arrow keys bump the value; Shift makes it a 10x jump (Figma/Adobe).
+        // We handle it ourselves (not the native ±step) so it routes through
+        // commit() — same clamp/snap/sync/rebuild path as typing then blur.
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          const step = parseFloat(sliderEl.step) || 1;
+          const dir = e.key === 'ArrowUp' ? 1 : -1;
+          const delta = (e.shiftKey ? step * 10 : step) * dir;
+
+          e.preventDefault();
+          const current = parseFloat(numEl.value);
+          const base = Number.isNaN(current) ? parseFloat(sliderEl.value) : current;
+          numEl.value = String(base + delta);
+          commit();
+        }
       });
     }
 
@@ -2090,6 +2163,7 @@
       // after the programmatic value change.
       state.bgColor = '#F5F5F5';
       state.textColor = '#000C14';
+      updateSelectionColor();
       bgHex.value = '#F5F5F5';
       textHex.value = '#000C14';
       bgSwatch.style.background = state.bgColor;
@@ -2288,6 +2362,36 @@
       return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s) ? s : null;
     }
 
+    // WCAG relative luminance of a hex colour (0 = black, 1 = white).
+    function relativeLuminance(hex) {
+      const h = hex.replace('#', '');
+      const full = h.length === 3
+        ? h.split('').map((c) => c + c).join('')
+        : h;
+      const r = parseInt(full.slice(0, 2), 16) / 255;
+      const g = parseInt(full.slice(2, 4), 16) / 255;
+      const b = parseInt(full.slice(4, 6), 16) / 255;
+      const lin = (c) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    }
+
+    // Adapt the textarea selection colour to the canvas background, like
+    // Figma/Illustrator: a light highlight on dark backgrounds, a dark one on
+    // light backgrounds, so the selection stays visible either way.
+    function updateSelectionColor() {
+      const lum = relativeLuminance(state.bgColor);
+      const isDark = lum < 0.5;
+
+      const selectionColor = isDark
+        ? 'rgba(255, 255, 255, 0.25)'
+        : 'rgba(0, 12, 20, 0.18)';
+      document.documentElement.style.setProperty('--selection-bg', selectionColor);
+
+      // Caret: full-opacity, unlike the translucent selection.
+      const caretColor = isDark ? '#ffffff' : '#000c14';
+      document.documentElement.style.setProperty('--caret-color', caretColor);
+    }
+
     // Coloris binds via the data-coloris attribute on each hex input (set in
     // the HTML), with data-coloris-format="hex" for output. No JS Coloris({})
     // config call — it throws on this build and the attribute alone is
@@ -2301,7 +2405,7 @@
     // reliably however Coloris dispatches it. Invalid partials are ignored.
     function applyBg() {
       const v = normalizeHex(bgHex.value);
-      if (v) { state.bgColor = v; bgSwatch.style.background = v; rebuildPattern(); }
+      if (v) { state.bgColor = v; updateSelectionColor(); bgSwatch.style.background = v; rebuildPattern(); }
     }
     function applyText() {
       const v = normalizeHex(textHex.value);
@@ -2312,9 +2416,11 @@
     textHex.addEventListener('input', applyText);
     textHex.addEventListener('change', applyText);
 
-    // Show the current colours on the swatches at startup.
+    // Show the current colours on the swatches at startup, and match the
+    // selection colour to the starting background.
     bgSwatch.style.background = state.bgColor;
     textSwatch.style.background = state.textColor;
+    updateSelectionColor();
 
     // Each swatch opens Coloris on its paired field: with wrap:true Coloris
     // opens on a click of the wrapped field. No-op while disabled: the swatch
