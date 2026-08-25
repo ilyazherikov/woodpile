@@ -151,10 +151,9 @@
       background: var(--main-bg);
     }
 
-    /* Left: fixed-width control panel, a white card floating on the grey
-       page. Rounded on its right corners only, flush to the other edges,
-       with a shadow falling to the right. Raised above the canvas so the
-       shadow shows. */
+    /* Left: fixed-width control panel — a white, square-cornered column
+       flush to every edge of the viewport. (An earlier rounded + shadowed
+       treatment was reverted: the rounding clashed with the scrollbar.) */
     #panel {
       width: 300px;
       flex: 0 0 300px;
@@ -249,8 +248,9 @@
        --social-bg repaints them automatically. */
     #panel-logo, #mobile-logo { color: var(--social-bg); }
 
-    /* Card grouping for a set of related controls. Purely visual — no
-       collapse/step logic yet (that's the later accordion pass). */
+    /* Card grouping for a set of related controls. Used by both step cards,
+       which layer the accordion's collapsed state on top (see .step-card
+       below). */
     .card {
       background: var(--card-bg);
       border-radius: var(--radius-card);
@@ -504,8 +504,10 @@
     /* Alignment selector shares the card's row rhythm with the sliders. */
     #align-selector { margin-bottom: var(--card-row-margin); }
 
-    /* ---- Colour settings (Background + Text). Markup/styles only;
-       Coloris wiring + recolor behaviour arrive in step 3. ---- */
+    /* ---- Colour settings (Background + Text). Each row pairs a hex text
+       field with a square swatch; Coloris binds to the field (via its
+       data-coloris attribute) and the swatch opens that picker. Both write
+       state.bgColor / state.textColor, which the canvas reads every frame. ---- */
     .color-settings {
       display: flex;
       gap: var(--input-row-margin);
@@ -869,13 +871,13 @@
     </svg>
     <p>I do not introduce the log.<br>(Sorry, guys, no mobile yet, please open the project on desktop)</p>
     <div id="mobile-social">
-      <a href="https://www.behance.net/ilyazherikov" target="_blank" id="mobile-icon-behance">
+      <a href="https://www.behance.net/ilyazherikov" target="_blank" rel="noopener" id="mobile-icon-behance">
         <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
       </a>
-      <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="mobile-icon-linkedin">
+      <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" rel="noopener" id="mobile-icon-linkedin">
         <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
       </a>
-      <a href="https://t.me/oilplant" target="_blank" id="mobile-icon-telegram">
+      <a href="https://t.me/oilplant" target="_blank" rel="noopener" id="mobile-icon-telegram">
         <svg viewBox="0 0 32 32" fill="none" role="img" aria-label="Telegram"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 0C24.8366 0 32 7.16344 32 16C32 24.8366 24.8366 32 16 32C7.16344 32 0 24.8366 0 16C0 7.16344 7.16344 0 16 0ZM22.542 9.63184C21.9402 9.64244 21.0166 9.96339 16.5732 11.8115C15.017 12.4588 11.9065 13.7989 7.24219 15.8311C6.48506 16.1322 6.08798 16.4268 6.05176 16.7148C5.98241 17.268 6.7793 17.4399 7.78125 17.7656C8.59818 18.0312 9.69727 18.3421 10.2686 18.3545C10.7867 18.3656 11.3654 18.1523 12.0039 17.7139C16.3579 14.7748 18.6071 13.2875 18.752 13.2529C18.8516 13.2303 18.9904 13.202 19.084 13.2852C19.1773 13.3684 19.1681 13.5261 19.1582 13.5684C19.0763 13.9083 14.9845 17.6294 14.749 17.874C13.8489 18.8089 12.8255 19.3812 14.4043 20.4219C15.7712 21.3226 16.5674 21.8982 17.9756 22.8213C18.8753 23.4111 19.5809 24.1097 20.5098 24.0244C20.9373 23.9851 21.3792 23.5835 21.6035 22.3848C22.1336 19.5511 23.1752 13.4108 23.416 10.8809C23.437 10.6593 23.4109 10.3754 23.3896 10.251C23.3683 10.1266 23.3235 9.94954 23.1621 9.81836C22.9705 9.66289 22.6745 9.62954 22.542 9.63184Z" fill="currentColor"/></svg>
       </a>
     </div>
@@ -904,14 +906,14 @@
         <div class="error" id="font-error" hidden></div>
       </div>
 
-      <!-- ===== Common settings (Tier 0) =====
-           Pattern selector + colour inputs shared across steps. Everything
-           here is a markup/style stub: the pattern selector is disabled and
-           the colour inputs are inert. Coloris + recolor wiring land in a
-           later step. -->
+      <!-- ===== Common settings =====
+           Shared across both steps. The colour inputs are live and are NOT
+           tier-specific: they enable as soon as a font loads and stay
+           enabled on Step 1 and Step 2 alike. The pattern selector is still
+           a disabled stub (see Row A). -->
       <div id="common-settings">
-        <!-- Row A: pattern selector. STUB — disabled; placeholder icons and
-             selection wiring are added in a later step. -->
+        <!-- Row A: pattern selector. STUB — permanently disabled; the shape
+             options and their selection wiring are not implemented yet. -->
         <div class="segmented-control" id="pattern-selector" aria-disabled="true">
           <button class="seg-item selected" disabled aria-label="Line">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="10" width="14" height="4" rx="1"/></svg>
@@ -924,8 +926,9 @@
           </button>
         </div>
 
-        <!-- Row B: colour settings (Background + Text). INERT — no Coloris,
-             no recolor yet (wired in step 3). -->
+        <!-- Row B: colour settings (Background + Text). Live: typing a hex
+             or picking in Coloris recolours the canvas immediately, on both
+             steps. data-coloris binds the picker to each field. -->
         <div class="color-settings">
           <div class="combined-input-group">
             <label for="bg-hex">Background</label>
@@ -953,8 +956,10 @@
           <span class="step-title">Set up the font</span>
         </div>
         <div class="step-body">
-          <!-- Text alignment (Tier 1). MARKUP ONLY — inert; default is
-               left. Click behaviour is wired in a later step. -->
+          <!-- Text alignment (Tier 1). Clicking a segment sets state.align,
+               which offsets each line in the canvas layout and mirrors onto
+               the textarea's text-align so the caret tracks the glyphs.
+               Enables/disables with the rest of the Step-1 card. -->
           <div class="segmented-control" id="align-selector">
             <button class="seg-item selected" data-align="left" aria-label="Align left">
               <svg width="24" height="24" viewBox="0 0 256 256" fill="currentColor"><path d="M32,64a8,8,0,0,1,8-8H216a8,8,0,0,1,0,16H40A8,8,0,0,1,32,64Zm8,48H168a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm176,24H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Zm-48,40H40a8,8,0,0,0,0,16H168a8,8,0,0,0,0-16Z"/></svg>
@@ -1094,7 +1099,7 @@
           </div>
 
           <div class="button-group">
-            <button class="action secondary" id="reset-physics-btn" disabled>Reset physics</button>
+            <button class="action secondary" id="reset-physics-btn" disabled>Reset settings</button>
             <button class="action" id="export-btn" disabled>Export as SVG</button>
           </div>
         </div>
@@ -1105,15 +1110,15 @@
       <!-- ===== Sidebar footer: social icons + Credits ===== -->
       <div id="sidebar-footer">
         <div id="social-icons">
-          <a href="https://www.behance.net/ilyazherikov" target="_blank" id="icon-behance">
+          <a href="https://www.behance.net/ilyazherikov" target="_blank" rel="noopener" id="icon-behance">
             <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="Behance"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM16 25V56H30.0088C31.5851 56 33.0518 55.8576 34.4004 55.5811C35.7488 55.3044 36.9194 54.7832 37.9121 54.0244C38.791 53.3684 39.5242 52.5524 40.1113 51.5879C41.0363 50.1306 41.4916 48.4818 41.4951 46.6416C41.4951 44.8615 41.09 43.3468 40.2822 42.0986C39.4787 40.848 38.2807 39.9403 36.6992 39.3623C37.7432 38.8345 38.5324 38.247 39.0654 37.6025C40.026 36.4501 40.5029 34.9324 40.5029 33.0391C40.5029 31.1455 40.0292 29.6203 39.0791 28.3047C37.4957 26.156 34.8092 25.0603 31.0234 25H16ZM54.9346 32.2373C51.6683 32.2374 49.0179 33.2628 46.9648 35.3193C44.9188 37.3725 43.8975 40.3193 43.8975 44.1738C43.8975 48.2835 45.0319 51.2448 47.2949 53.0674C49.565 54.8864 52.1771 55.8007 55.1445 55.8008C58.7349 55.8008 61.5318 54.7191 63.5244 52.5596C64.8125 51.2015 65.528 49.865 65.6846 48.5459H59.7383C59.3932 49.1947 58.9948 49.7051 58.543 50.0703C57.7139 50.7546 56.6361 51.0878 55.3125 51.0879C54.0564 51.0879 52.9847 50.8152 52.0986 50.2549C50.6328 49.3612 49.8604 47.8006 49.7715 45.5703H65.9941C66.0226 43.6485 65.9512 42.1768 65.8018 41.1592L65.7949 41.1562C65.5209 39.4152 64.934 37.8861 64.0195 36.5635C63.009 35.0636 61.7242 33.9714 60.1729 33.2764C58.6143 32.5814 56.8702 32.2373 54.9346 32.2373ZM29.8564 42.3506C31.1906 42.3613 32.2293 42.5356 32.9658 42.876C34.2824 43.4752 34.9443 44.5848 34.9443 46.1982C34.9443 48.1058 34.2614 49.393 32.9023 50.0703H32.8984C32.1441 50.4391 31.0976 50.6133 29.749 50.6133H23.1768V42.3506H29.8564ZM54.9316 37.0244C56.3086 37.0244 57.4616 37.4252 58.3867 38.2266C59.319 39.0244 59.835 40.1913 59.9453 41.7373H49.9072L49.9033 41.7334C50.1133 40.2833 50.6296 39.1382 51.4551 38.2979C52.277 37.4539 53.4336 37.0244 54.9316 37.0244ZM28.9629 30.3828C30.4502 30.3828 31.6776 30.55 32.6348 30.8691C33.7484 31.3301 34.3075 32.2871 34.3076 33.7266C34.3076 35.0315 33.8873 35.9399 33.0439 36.4541C32.2008 36.9645 31.1086 37.2236 29.7568 37.2236H23.1738V30.3828H28.9629ZM48.623 26.2842V29.3867H61.1475V26.2842H48.623Z" fill="currentColor"/></svg>
           </a>
-          <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" id="icon-linkedin">
+          <a href="https://www.linkedin.com/in/ilyazherikov/" target="_blank" rel="noopener" id="icon-linkedin">
             <svg viewBox="0 0 80 80" fill="none" role="img" aria-label="LinkedIn"><path d="M40 0C62.0914 0 80 17.9086 80 40C80 62.0914 62.0914 80 40 80C17.9086 80 0 62.0914 0 40C0 17.9086 17.9086 0 40 0ZM22.625 30.6182V56H30.5049V30.6182H22.625ZM50.5547 29.9893C46.7255 29.99 44.1566 32.0923 43.1045 34.0889H42.9961V30.6182H35.4414V56H43.3125V43.4443C43.3125 40.1334 43.9381 36.9258 48.0361 36.9258C52.1335 36.9261 52.1279 40.7103 52.1279 43.6553V56H60V42.0791C60 35.2441 58.5288 29.9907 50.5547 29.9893ZM26.5635 18C24.0397 18 22 20.051 22 22.5762C22 25.1014 24.0397 27.1494 26.5635 27.1494C29.0872 27.1493 31.1269 25.1013 31.127 22.5762C31.127 20.051 29.0818 18.0001 26.5635 18Z" fill="currentColor"/></svg>
           </a>
           <!-- Telegram: same knock-out disc as above (from Figma); fill-rule
                /clip-rule="evenodd" cut the paper-plane out of the disc. -->
-          <a href="https://t.me/oilplant" target="_blank" id="icon-telegram">
+          <a href="https://t.me/oilplant" target="_blank" rel="noopener" id="icon-telegram">
             <svg viewBox="0 0 32 32" fill="none" role="img" aria-label="Telegram"><path fill-rule="evenodd" clip-rule="evenodd" d="M16 0C24.8366 0 32 7.16344 32 16C32 24.8366 24.8366 32 16 32C7.16344 32 0 24.8366 0 16C0 7.16344 7.16344 0 16 0ZM22.542 9.63184C21.9402 9.64244 21.0166 9.96339 16.5732 11.8115C15.017 12.4588 11.9065 13.7989 7.24219 15.8311C6.48506 16.1322 6.08798 16.4268 6.05176 16.7148C5.98241 17.268 6.7793 17.4399 7.78125 17.7656C8.59818 18.0312 9.69727 18.3421 10.2686 18.3545C10.7867 18.3656 11.3654 18.1523 12.0039 17.7139C16.3579 14.7748 18.6071 13.2875 18.752 13.2529C18.8516 13.2303 18.9904 13.202 19.084 13.2852C19.1773 13.3684 19.1681 13.5261 19.1582 13.5684C19.0763 13.9083 14.9845 17.6294 14.749 17.874C13.8489 18.8089 12.8255 19.3812 14.4043 20.4219C15.7712 21.3226 16.5674 21.8982 17.9756 22.8213C18.8753 23.4111 19.5809 24.1097 20.5098 24.0244C20.9373 23.9851 21.3792 23.5835 21.6035 22.3848C22.1336 19.5511 23.1752 13.4108 23.416 10.8809C23.437 10.6593 23.4109 10.3754 23.3896 10.251C23.3683 10.1266 23.3235 9.94954 23.1621 9.81836C22.9705 9.66289 22.6745 9.62954 22.542 9.63184Z" fill="currentColor"/></svg>
           </a>
         </div>
@@ -1421,37 +1426,29 @@
       return blockH <= (p5Instance.height - 2 * margin);
     }
 
-    // Longest prefix of `text` that fits vertically. Trims whole words from
-    // the END first; if not even one word fits (or a single word is
-    // overlong), grows character by character to keep the maximum that fits.
+    // Longest prefix of `text` that fits vertically, or '' if not even one
+    // character does.
+    //
+    // Block height is non-decreasing in prefix length (adding characters can
+    // only extend the last line or wrap a new one), so the fits/overflows
+    // boundary is monotonic and can be BINARY-SEARCHED rather than scanned.
+    // That matters because every probe is a full re-layout, and each layout
+    // shapes every word with fontkit: a linear scan cost O(n) layouts over an
+    // O(n) string, so pasting a few thousand characters froze the tab for
+    // seconds. This costs O(log n) layouts for the same answer — the previous
+    // word-then-character walk also converged on the longest fitting prefix,
+    // just the slow way.
     function truncateToFit(text) {
       if (fitsVertically(text)) return text;
 
-      // 1) Try trimming whole words from the end.
-      const words = text.split(/(\s+)/); // keep separators as tokens
-      let built = '';
-      let lastFit = '';
-      for (const token of words) {
-        const candidate = built + token;
-        if (fitsVertically(candidate)) {
-          built = candidate;
-          if (token.trim() !== '') lastFit = built; // record at word ends
-        } else {
-          break;
-        }
+      let lo = 0;                 // fits — or the '' fallback if nothing does
+      let hi = text.length - 1;   // the full string is known NOT to fit
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fitsVertically(text.slice(0, mid))) lo = mid;
+        else hi = mid - 1;
       }
-      // Prefer the last whole-word boundary that fit.
-      let result = lastFit || '';
-
-      // 2) If not even one word fit, or a single overlong word remains,
-      //    grow character by character from result.
-      let charCandidate = result;
-      for (let i = result.length; i < text.length; i++) {
-        const next = charCandidate + text[i];
-        if (fitsVertically(next)) charCandidate = next;
-        else break;
-      }
-      return charCandidate;
+      return text.slice(0, lo);
     }
 
     // =========================================================
@@ -2145,8 +2142,6 @@
     // font metrics — to defaults. Shared by "Reset settings" and the
     // Clear-to-defaults path. Does NOT touch axes, text, or physics.
     function resetTier1Params() {
-      state.fontSize = 150; fontSizeInput.value = '150'; fontSizeVal.value = '150';
-      state.lineHeightPct = 120; lineHeightInput.value = '120'; lineHeightVal.value = '120';
       state.thickness = 3; thicknessInput.value = '3'; thicknessVal.value = '3';
       state.gap = 3; gapInput.value = '3'; gapVal.value = '3';
       state.angle = 0; angleInput.value = '0'; angleVal.value = '0';
@@ -2154,10 +2149,26 @@
       document.querySelectorAll('#align-selector .seg-item')
         .forEach((b) => b.classList.toggle('selected', b.dataset.align === 'left'));
       textInput.style.textAlign = 'left';
-      textInput.style.fontSize = '150px';
-      textInput.style.lineHeight = '1.2';
-      [fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput]
-        .forEach(paintRangeFill);
+      [thicknessInput, gapInput, angleInput].forEach(paintRangeFill);
+
+      // Font size and line height are reset THROUGH their sliders' own
+      // 'input' handlers, never by assigning state directly: only the
+      // handlers run the growth clamp, so a reset can't push text off the
+      // canvas the way a raw assignment would. Each handler also syncs its
+      // number field, the caret's CSS metrics, the fill paint and the
+      // pattern. Apply whichever value SHRINKS first — shrinking always
+      // succeeds and frees vertical space, so a following grow is clamped
+      // against the roomier layout instead of the old one.
+      [
+        { input: fontSizeInput, target: 150, delta: 150 - state.fontSize },
+        { input: lineHeightInput, target: 120, delta: 120 - state.lineHeightPct },
+      ]
+        .sort((a, b) => a.delta - b.delta)
+        .forEach(({ input, target }) => {
+          input.value = String(target);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
       // Colours reset to their defaults too. Update state + the fields +
       // swatches, then dispatch 'input' so Coloris refreshes its thumbnail
       // after the programmatic value change.
