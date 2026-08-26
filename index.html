@@ -551,6 +551,26 @@
       cursor: pointer;
       padding: 0;
     }
+    /* Hover / active states recolor the field and its swatch TOGETHER, so the
+       pair reads as one control (per Figma Default/Hover/Active).
+       `.is-active` is toggled from Coloris's own open/close events rather than
+       :focus / :focus-within — Coloris moves focus into its popup, which makes
+       the native focus state flicker and then drop. */
+    .combined-input:hover:not(.is-active) .hex-input,
+    .combined-input:hover:not(.is-active) .swatch {
+      border-color: var(--input-border-hover);
+    }
+    .combined-input:hover:not(.is-active) .hex-input {
+      background: var(--input-bg-hover);
+    }
+    .combined-input.is-active .hex-input,
+    .combined-input.is-active .swatch {
+      border-color: var(--input-border-active);
+    }
+    .combined-input.is-active .hex-input {
+      background: var(--input-bg-active);
+    }
+    .hex-input:focus { outline: none; }
     /* Coloris (wrap:true) wraps each .hex-input in a .clr-field and injects
        its own thumbnail button. Hide that thumbnail — the design uses its own
        square .swatch — and make the wrapper layout-neutral so the hex input
@@ -931,17 +951,19 @@
              steps. data-coloris binds the picker to each field. -->
         <div class="color-settings">
           <div class="combined-input-group">
-            <label for="bg-hex">Background</label>
+            <!-- Labelled via aria-labelledby, NOT for=: a `for` label forwards
+                 its clicks to the input, which would open the picker. -->
+            <label id="bg-hex-label">Background</label>
             <div class="combined-input">
               <!-- value + swatch colour are seeded from COLOR_DEFAULTS in JS -->
-              <input type="text" class="hex-input" id="bg-hex" data-coloris data-coloris-format="hex" />
+              <input type="text" class="hex-input" id="bg-hex" data-coloris data-coloris-format="hex" aria-labelledby="bg-hex-label" />
               <button class="swatch" id="bg-swatch"></button>
             </div>
           </div>
           <div class="combined-input-group">
-            <label for="text-hex">Text</label>
+            <label id="text-hex-label">Text</label>
             <div class="combined-input">
-              <input type="text" class="hex-input" id="text-hex" data-coloris data-coloris-format="hex" />
+              <input type="text" class="hex-input" id="text-hex" data-coloris data-coloris-format="hex" aria-labelledby="text-hex-label" />
               <button class="swatch" id="text-swatch"></button>
             </div>
           </div>
@@ -1948,6 +1970,7 @@
         // parses but has broken tables throws HERE, while the previously
         // loaded font is still fully intact.
         parsed.layout('x');
+        //noinspection ExceptionCaughtLocallyJS
         if (!(parsed.unitsPerEm > 0)) throw new Error('bad font metrics');
         if (parsed.variationAxes && Object.keys(parsed.variationAxes).length) {
           const defaults = {};
@@ -2451,6 +2474,20 @@
     bgHex.addEventListener('change', applyBg);
     textHex.addEventListener('input', applyText);
     textHex.addEventListener('change', applyText);
+
+    // Active (picker-open) state. Coloris fires 'open'/'close' on the bound
+    // input; mirroring them onto the wrapping .combined-input lets the CSS
+    // recolor the field and its swatch as one unit. Driven by these events
+    // rather than :focus/:focus-within because Coloris moves focus into its
+    // popup, which would make the native focus state flicker and then drop.
+    function bindPickerActiveState(hexInput) {
+      const group = hexInput.closest('.combined-input');
+      if (!group) return;
+      hexInput.addEventListener('open', () => group.classList.add('is-active'));
+      hexInput.addEventListener('close', () => group.classList.remove('is-active'));
+    }
+    bindPickerActiveState(bgHex);
+    bindPickerActiveState(textHex);
 
     // Seed both fields and swatches from state (itself seeded from
     // COLOR_DEFAULTS), so the colour literals live in one place rather than
