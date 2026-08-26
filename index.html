@@ -662,8 +662,8 @@
       color: transparent;
       caret-color: var(--caret-color, #070707);
       font-family: 'UploadedFont', sans-serif;
-      font-size: 150px;
-      line-height: 1.2;
+      /* font-size + line-height are set inline from TEXT_DEFAULTS on init,
+         then kept in sync by the size / line-height sliders. */
       resize: none;
       overflow: hidden;
       white-space: pre-wrap;
@@ -933,15 +933,16 @@
           <div class="combined-input-group">
             <label for="bg-hex">Background</label>
             <div class="combined-input">
-              <input type="text" class="hex-input" id="bg-hex" data-coloris data-coloris-format="hex" value="#F5F5F5" />
-              <button class="swatch" id="bg-swatch" style="background:#F5F5F5"></button>
+              <!-- value + swatch colour are seeded from COLOR_DEFAULTS in JS -->
+              <input type="text" class="hex-input" id="bg-hex" data-coloris data-coloris-format="hex" />
+              <button class="swatch" id="bg-swatch"></button>
             </div>
           </div>
           <div class="combined-input-group">
             <label for="text-hex">Text</label>
             <div class="combined-input">
-              <input type="text" class="hex-input" id="text-hex" data-coloris data-coloris-format="hex" value="#000C14" />
-              <button class="swatch" id="text-swatch" style="background:#000C14"></button>
+              <input type="text" class="hex-input" id="text-hex" data-coloris data-coloris-format="hex" />
+              <button class="swatch" id="text-swatch"></button>
             </div>
           </div>
         </div>
@@ -978,9 +979,11 @@
                 <label for="fontSize">Font size</label>
                 <span class="unit">px</span>
               </div>
-              <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" value="150" disabled aria-label="Font size value"/>
+              <!-- value seeded from TEXT_DEFAULTS in JS; min/max/step stay
+                   here — the slider is the source of truth for bounds. -->
+              <input type="number" class="num-input" id="fontSize-val" min="72" max="540" step="1" disabled aria-label="Font size value"/>
             </div>
-            <input type="range" id="fontSize" min="72" max="540" step="1" value="150" disabled aria-label="Font size"/>
+            <input type="range" id="fontSize" min="72" max="540" step="1" disabled aria-label="Font size"/>
           </div>
 
           <div class="control">
@@ -989,9 +992,9 @@
                 <label for="lineHeight">Line height</label>
                 <span class="unit">%</span>
               </div>
-              <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" value="120" disabled aria-label="Line height value"/>
+              <input type="number" class="num-input" id="lineHeight-val" min="50" max="200" step="1" disabled aria-label="Line height value"/>
             </div>
-            <input type="range" id="lineHeight" min="50" max="200" step="1" value="120" disabled aria-label="Line height"/>
+            <input type="range" id="lineHeight" min="50" max="200" step="1" disabled aria-label="Line height"/>
           </div>
 
           <!-- Variable-font axis sliders are injected here at load time -->
@@ -1185,6 +1188,12 @@
     // ---------------- Constants ----------------
     const CURVE_STEPS = 8; // bezier flattening resolution
 
+    // Single sources of truth for the app's defaults. Initial state, the DOM
+    // controls (seeded below) and "Reset settings" all derive from these, so
+    // a default is changed in exactly one place and can't drift out of sync.
+    const TEXT_DEFAULTS = { fontSize: 150, lineHeightPct: 120 };
+    const COLOR_DEFAULTS = { bg: '#F5F5F5', text: '#000C14' };
+
     // Canvas text padding, read live from the --canvas-padding CSS variable
     // so the #text-input padding and the canvas layout margin share one
     // source of truth and can never desync. Called at the top of each
@@ -1198,14 +1207,14 @@
 
     // ---------------- App state ----------------
     const state = {
-      fontSize: 150,
-      lineHeightPct: 120, // line height as a percentage of font size
+      fontSize: TEXT_DEFAULTS.fontSize,
+      lineHeightPct: TEXT_DEFAULTS.lineHeightPct, // % of font size
       thickness: 3,
       gap: 3,
       angle: 0,          // pattern rotation in degrees (0 = horizontal)
       align: 'left',     // 'left' | 'center' | 'right' — per-line alignment
-      bgColor: '#F5F5F5',   // canvas background (cross-step, user-set)
-      textColor: '#000C14', // pattern fill    (cross-step, user-set)
+      bgColor: COLOR_DEFAULTS.bg,     // canvas background (cross-step)
+      textColor: COLOR_DEFAULTS.text, // pattern fill      (cross-step)
       axes: {},          // { axisTag: value } for variable fonts
       expanded: false,
     };
@@ -1217,16 +1226,9 @@
     let currentLines = [];      // [{x,y,w,h,angle}] glyph-clipped strokes
     let lastGoodText = '';      // last textarea value that fit vertically
 
-    // Physics config — single source of truth for all tuning.
-    const physicsConfig = {
-      frictionAir: 0.4,
-      restitution: 0.3,
-      friction: 0.1,
-      mouseForceScale: 0.2,
-      spin: 0.8,
-    };
-
-    // Slider id -> { default, decimals } for the physics controls.
+    // Slider id -> { value, decimals } for the physics controls. The single
+    // source of truth for physics defaults: physicsConfig below and the
+    // "Reset settings" handler both read from here.
     const PHYSICS_DEFAULTS = {
       frictionAir: { value: 0.4, decimals: 2 },
       restitution: { value: 0.3, decimals: 1 },
@@ -1234,6 +1236,14 @@
       mouseForceScale: { value: 0.2, decimals: 1 },
       spin: { value: 0.8, decimals: 2 },
     };
+
+    // Live physics tuning, derived from the defaults above (same flat
+    // { key: number } shape the engine expects). physics.js keeps this exact
+    // object by reference and reads it live, so it is mutated in place by
+    // setBodyProperty / the mouseForceScale slider — never reassigned.
+    const physicsConfig = Object.fromEntries(
+      Object.entries(PHYSICS_DEFAULTS).map(([key, meta]) => [key, meta.value])
+    );
 
     // =========================================================
     // Geometry helpers
@@ -1739,6 +1749,17 @@
     const gapVal = document.getElementById('gap-val');
     const angleVal = document.getElementById('angle-val');
 
+    // Seed the size / line-height controls and the caret's CSS metrics from
+    // TEXT_DEFAULTS, so those numbers live in exactly one place instead of
+    // being repeated in the markup and the stylesheet. Runs before the
+    // initial paintRangeFill sweep below, which reads each slider's value.
+    fontSizeInput.value = String(TEXT_DEFAULTS.fontSize);
+    fontSizeVal.value = String(TEXT_DEFAULTS.fontSize);
+    lineHeightInput.value = String(TEXT_DEFAULTS.lineHeightPct);
+    lineHeightVal.value = String(TEXT_DEFAULTS.lineHeightPct);
+    textInput.style.fontSize = TEXT_DEFAULTS.fontSize + 'px';
+    textInput.style.lineHeight = String(TEXT_DEFAULTS.lineHeightPct / 100);
+
     const expandBtn = document.getElementById('expand-btn');
     const resetSettingsBtn = document.getElementById('reset-settings-btn');
     const exportBtn = document.getElementById('export-btn');
@@ -2160,8 +2181,12 @@
       // succeeds and frees vertical space, so a following grow is clamped
       // against the roomier layout instead of the old one.
       [
-        { input: fontSizeInput, target: 150, delta: 150 - state.fontSize },
-        { input: lineHeightInput, target: 120, delta: 120 - state.lineHeightPct },
+        { input: fontSizeInput,
+          target: TEXT_DEFAULTS.fontSize,
+          delta: TEXT_DEFAULTS.fontSize - state.fontSize },
+        { input: lineHeightInput,
+          target: TEXT_DEFAULTS.lineHeightPct,
+          delta: TEXT_DEFAULTS.lineHeightPct - state.lineHeightPct },
       ]
         .sort((a, b) => a.delta - b.delta)
         .forEach(({ input, target }) => {
@@ -2172,11 +2197,11 @@
       // Colours reset to their defaults too. Update state + the fields +
       // swatches, then dispatch 'input' so Coloris refreshes its thumbnail
       // after the programmatic value change.
-      state.bgColor = '#F5F5F5';
-      state.textColor = '#000C14';
+      state.bgColor = COLOR_DEFAULTS.bg;
+      state.textColor = COLOR_DEFAULTS.text;
       updateSelectionColor();
-      bgHex.value = '#F5F5F5';
-      textHex.value = '#000C14';
+      bgHex.value = COLOR_DEFAULTS.bg;
+      textHex.value = COLOR_DEFAULTS.text;
       bgSwatch.style.background = state.bgColor;
       textSwatch.style.background = state.textColor;
       bgHex.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2427,8 +2452,12 @@
     textHex.addEventListener('input', applyText);
     textHex.addEventListener('change', applyText);
 
-    // Show the current colours on the swatches at startup, and match the
-    // selection colour to the starting background.
+    // Seed both fields and swatches from state (itself seeded from
+    // COLOR_DEFAULTS), so the colour literals live in one place rather than
+    // being repeated in the markup. Also match the selection/caret colour to
+    // the starting background.
+    bgHex.value = state.bgColor;
+    textHex.value = state.textColor;
     bgSwatch.style.background = state.bgColor;
     textSwatch.style.background = state.textColor;
     updateSelectionColor();
