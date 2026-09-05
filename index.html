@@ -371,6 +371,12 @@
     #axes-container { margin-bottom: var(--card-row-margin); }
     #axes-container:empty { display: none; margin-bottom: 0; }
 
+    /* Shape-slider blocks (one visible per pattern type). The wrapper carries
+       the row gap its last .control loses to .control:last-child, so the
+       spacing below is identical to the un-wrapped layout. `hidden` collapses
+       the whole block, margin included. */
+    #line-shape-controls, #circle-shape-controls { margin-bottom: var(--card-row-margin); }
+
     /* Form-field row: [label + unit] on the left, number input pinned right. */
     .field-row {
       display: flex;
@@ -483,15 +489,19 @@
       background: var(--seg-selected-bg);
       color: var(--seg-selected-contents);
     }
-    /* Hover background for enabled segments (align selector). The disabled
-       pattern selector never triggers these — kept for consistency/future. */
+    /* Hover background for enabled segments; disabled ones stay inert. */
     .seg-item:not(.selected):not(:disabled):hover { background: var(--seg-default-bg-hover); }
     .seg-item.selected:not(:disabled):hover { background: var(--seg-selected-bg-hover); }
     /* Suppress the divider on either edge of a selected segment. */
     .seg-item.selected::before,
     .seg-item.selected + .seg-item::before { display: none; }
-    /* Disabled segmented control (the pattern selector is a disabled stub
-       for now; selection + wiring land in a later step). */
+    /* Individually disabled pattern segment (Diamond — still a stub): muted
+       and inert while Line / Circle beside it stay live. */
+    #pattern-selector .seg-item:disabled {
+      color: var(--seg-disabled-contents);
+      cursor: default;
+    }
+    /* Fully disabled segmented control (whole-control stub state). */
     .segmented-control[aria-disabled="true"] { background: var(--seg-disabled-bg); }
     .segmented-control[aria-disabled="true"] .seg-item {
       color: var(--seg-disabled-contents);
@@ -929,16 +939,17 @@
       <!-- ===== Common settings =====
            Shared across both steps. The colour inputs are live and are NOT
            tier-specific: they enable as soon as a font loads and stay
-           enabled on Step 1 and Step 2 alike. The pattern selector is still
-           a disabled stub (see Row A). -->
+           enabled on Step 1 and Step 2 alike. The pattern selector is live
+           for Line / Circle; Diamond is still a stub (see Row A). -->
       <div id="common-settings">
-        <!-- Row A: pattern selector. STUB — permanently disabled; the shape
-             options and their selection wiring are not implemented yet. -->
-        <div class="segmented-control" id="pattern-selector" aria-disabled="true">
-          <button class="seg-item selected" disabled aria-label="Line">
+        <!-- Row A: pattern selector. Line and Circle are live; each swaps the
+             shape-slider block below and resets that shape's params. Diamond
+             is still a STUB — permanently disabled and visually inert. -->
+        <div class="segmented-control" id="pattern-selector">
+          <button class="seg-item selected" aria-label="Line">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="10" width="14" height="4" rx="1"/></svg>
           </button>
-          <button class="seg-item" disabled aria-label="Circle">
+          <button class="seg-item" aria-label="Circle">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
           </button>
           <button class="seg-item" disabled aria-label="Diamond">
@@ -1022,38 +1033,66 @@
           <!-- Variable-font axis sliders are injected here at load time -->
           <div id="axes-container"></div>
 
-          <div class="control">
-            <div class="field-row">
-              <div class="label-wrap">
-                <label for="thickness">Line thickness</label>
-                <span class="unit">px</span>
+          <!-- Shape sliders. Exactly one of these two blocks is visible at a
+               time; the pattern selector (Row A) swaps them. -->
+          <div id="line-shape-controls">
+            <div class="control">
+              <div class="field-row">
+                <div class="label-wrap">
+                  <label for="thickness">Line thickness</label>
+                  <span class="unit">px</span>
+                </div>
+                <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
               </div>
-              <input type="number" class="num-input" id="thickness-val" min="1" max="20" step="1" value="3" disabled aria-label="Line thickness value"/>
+              <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
             </div>
-            <input type="range" id="thickness" min="1" max="20" value="3" disabled aria-label="Line thickness"/>
+
+            <div class="control">
+              <div class="field-row">
+                <div class="label-wrap">
+                  <label for="gap">Gap</label>
+                  <span class="unit">px</span>
+                </div>
+                <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
+              </div>
+              <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
+            </div>
+
+            <!-- Angle (0 = horizontal, 90 = vertical) -->
+            <div class="control">
+              <div class="field-row">
+                <div class="label-wrap">
+                  <label for="angle">Angle</label>
+                  <span class="unit">°</span>
+                </div>
+                <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
+              </div>
+              <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
+            </div>
           </div>
 
-          <div class="control">
-            <div class="field-row">
-              <div class="label-wrap">
-                <label for="gap">Gap</label>
-                <span class="unit">px</span>
+          <div id="circle-shape-controls" hidden>
+            <div class="control">
+              <div class="field-row">
+                <div class="label-wrap">
+                  <label for="diameter">Diameter</label>
+                  <span class="unit">px</span>
+                </div>
+                <input type="number" class="num-input" id="diameter-val" min="3" max="20" step="1" value="8" disabled aria-label="Circle diameter value"/>
               </div>
-              <input type="number" class="num-input" id="gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Gap value"/>
+              <input type="range" id="diameter" min="3" max="20" value="8" disabled aria-label="Circle diameter"/>
             </div>
-            <input type="range" id="gap" min="0" max="10" value="3" disabled aria-label="Gap size"/>
-          </div>
 
-          <!-- Angle (0 = horizontal, 90 = vertical) -->
-          <div class="control">
-            <div class="field-row">
-              <div class="label-wrap">
-                <label for="angle">Angle</label>
-                <span class="unit">°</span>
+            <div class="control">
+              <div class="field-row">
+                <div class="label-wrap">
+                  <label for="circle-gap">Gap</label>
+                  <span class="unit">px</span>
+                </div>
+                <input type="number" class="num-input" id="circle-gap-val" min="0" max="10" step="1" value="3" disabled aria-label="Circle gap value"/>
               </div>
-              <input type="number" class="num-input" id="angle-val" min="0" max="180" step="1" value="0" disabled aria-label="Angle value"/>
+              <input type="range" id="circle-gap" min="0" max="10" value="3" disabled aria-label="Circle gap"/>
             </div>
-            <input type="range" id="angle" min="0" max="180" step="1" value="0" disabled aria-label="Pattern angle"/>
           </div>
 
           <div class="button-group">
@@ -1216,6 +1255,13 @@
     const TEXT_DEFAULTS = { fontSize: 150, lineHeightPct: 120 };
     const COLOR_DEFAULTS = { bg: '#F5F5F5', text: '#000C14' };
 
+    // Per-pattern shape parameters. Switching pattern type resets only the
+    // params of the type being switched TO (text params are never touched).
+    const SHAPE_DEFAULTS = {
+      line:   { thickness: 3, gap: 3, angle: 0 },
+      circle: { diameter: 8, gap: 3 },
+    };
+
     // Canvas text padding, read live from the --canvas-padding CSS variable
     // so the #text-input padding and the canvas layout margin share one
     // source of truth and can never desync. Called at the top of each
@@ -1231,9 +1277,12 @@
     const state = {
       fontSize: TEXT_DEFAULTS.fontSize,
       lineHeightPct: TEXT_DEFAULTS.lineHeightPct, // % of font size
+      patternType: 'line', // 'line' | 'circle'
       thickness: 3,
       gap: 3,
       angle: 0,          // pattern rotation in degrees (0 = horizontal)
+      circleDiameter: 8,
+      circleGap: 3,
       align: 'left',     // 'left' | 'center' | 'right' — per-line alignment
       bgColor: COLOR_DEFAULTS.bg,     // canvas background (cross-step)
       textColor: COLOR_DEFAULTS.text, // pattern fill      (cross-step)
@@ -1246,6 +1295,7 @@
     let fontInstance = null;    // variation-applied instance (or base font)
     let fontFaceUrl = null;     // blob URL backing the @font-face
     let currentLines = [];      // [{x,y,w,h,angle}] glyph-clipped strokes
+    let currentCircles = [];    // [{x,y,d}] canvas-space circle centers + diameter
     let lastGoodText = '';      // last textarea value that fit vertically
 
     // Slider id -> { value, decimals } for the physics controls. The single
@@ -1367,6 +1417,43 @@
         else merged.push([s[0], s[1]]);
       }
       return merged;
+    }
+
+    // Non-zero winding number of point (px,py) against a set of closed
+    // polygons. 0 = outside (or inside a hole), non-zero = inside filled ink.
+    // Same fill rule clipLineToPolygons uses, so both patterns agree on what
+    // counts as ink.
+    function windingNumber(px, py, polys) {
+      let wind = 0;
+      for (const poly of polys) {
+        const m = poly.length;
+        for (let i = 0; i < m; i++) {
+          const A = poly[i], B = poly[(i + 1) % m];
+          if (A.y <= py) {
+            if (B.y > py && (B.x - A.x) * (py - A.y) - (px - A.x) * (B.y - A.y) > 0) wind++;
+          } else if (B.y <= py) {
+            if ((B.x - A.x) * (py - A.y) - (px - A.x) * (B.y - A.y) < 0) wind--;
+          }
+        }
+      }
+      return wind;
+    }
+
+    // True iff the circle at (cx,cy) with radius r lies entirely inside the
+    // filled region described by `polys` (winding rule — correct even when a
+    // glyph is built from overlapping contours, e.g. variable-font masters).
+    // Sampled rather than edge-distance-tested: an internal seam where two
+    // contours overlap is NOT a real boundary and must not block a circle.
+    const CIRCLE_SAMPLE_POINTS = 24;
+    function circleFullyInside(cx, cy, r, polys) {
+      if (windingNumber(cx, cy, polys) === 0) return false;
+      for (let i = 0; i < CIRCLE_SAMPLE_POINTS; i++) {
+        const theta = (i / CIRCLE_SAMPLE_POINTS) * Math.PI * 2;
+        const px = cx + r * Math.cos(theta);
+        const py = cy + r * Math.sin(theta);
+        if (windingNumber(px, py, polys) === 0) return false;
+      }
+      return true;
     }
 
     // =========================================================
@@ -1492,6 +1579,10 @@
     // currentLines (drawn each frame and fed to Expand).
     function rebuildPattern() {
       currentLines = [];
+      currentCircles = [];
+      // Circle mode builds its own geometry and leaves currentLines empty
+      // (Expand/physics is gated off in circle mode).
+      if (state.patternType === 'circle') { rebuildCirclePattern(); return; }
       if (!fontInstance) return;
 
       const margin = getCanvasPadding();
@@ -1522,6 +1613,38 @@
       currentLines = linesFromPolygons(polys);
     }
 
+    // Circle-mode counterpart of rebuildPattern: same layout / alignment
+    // math, but the glyph contours are kept grouped per letter so each glyph
+    // gets its own circle grid. Stores the result in currentCircles.
+    function rebuildCirclePattern() {
+      currentCircles = [];
+      if (!fontInstance) return;
+
+      const margin = getCanvasPadding();
+      const { lines, lineHeight } = layoutLines(textInput.value);
+      const upm = fontInstance.unitsPerEm || font.unitsPerEm;
+      const scale = state.fontSize / upm;
+      const firstBaseline = margin + fontInstance.ascent * scale;
+      const availW = p5Instance.width - 2 * margin;
+
+      const groups = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i]) continue;
+        const baselineY = firstBaseline + i * lineHeight;
+        const lineW = widthPx(lines[i], state.fontSize);
+        let originX = margin; // left (default)
+        if (state.align === 'center') originX = margin + (availW - lineW) / 2;
+        else if (state.align === 'right') originX = margin + (availW - lineW);
+        if (originX < margin) originX = margin; // never offset left of the margin
+        collectGlyphGroups(lines[i], originX, baselineY, scale, groups);
+      }
+
+      for (const glyphPolys of groups) {
+        if (!glyphPolys.length) continue;
+        currentCircles.push(...circlesForGlyph(glyphPolys));
+      }
+    }
+
     // Shape one line with fontkit and append all its glyph contours (as
     // canvas-space polygons) to `out`. Glyph paths are in font units,
     // y-up; we scale by `scale` and flip y about the baseline.
@@ -1539,6 +1662,30 @@
         });
         if (glyph.path && glyph.path.commands.length) {
           pushGlyphPolygons(glyph.path, tf, out);
+        }
+        penX += pos.xAdvance;
+      }
+    }
+
+    // Like addLinePolygons, but keeps each glyph's contours in its own array
+    // (pushed into `groups`) instead of flattening everything into one list.
+    // Needed so circle fill can be masked per letter instead of per whole line.
+    function collectGlyphGroups(text, originX, baselineY, scale, groups) {
+      const run = fontInstance.layout(text);
+      let penX = 0;
+      for (let i = 0; i < run.glyphs.length; i++) {
+        const glyph = run.glyphs[i];
+        const pos = run.positions[i];
+        const gx = penX + pos.xOffset;
+        const gy = pos.yOffset;
+        const tf = (x, y) => ({
+          x: originX + (gx + x) * scale,
+          y: baselineY - (gy + y) * scale,
+        });
+        if (glyph.path && glyph.path.commands.length) {
+          const glyphPolys = [];
+          pushGlyphPolygons(glyph.path, tf, glyphPolys);
+          groups.push(glyphPolys);
         }
         penX += pos.xAdvance;
       }
@@ -1593,6 +1740,49 @@
       return rects;
     }
 
+    // Tile one glyph with rows of circles, spaced (diameter + gap) apart and
+    // anchored to the glyph's own bounding box, so each letter's fill is
+    // independent of its neighbours.
+    //
+    // Rows are fixed (minY + r, stepping by diameter + gap), but each row packs
+    // greedily left-to-right rather than sampling shared x-columns: a fixed grid
+    // tests the same columns in every row, so on curved strokes ("e", "s") the
+    // first in-glyph column sits well right of the actual boundary and leaves an
+    // asymmetric margin. Scanning finds where each row's boundary really is.
+    //
+    // Whole circles only: a candidate is kept only if it lies ENTIRELY within
+    // the glyph outline (circleFullyInside), so counters stay empty and no
+    // circle is ever clipped by an edge. The bbox is just a coarse pre-filter
+    // for the scan range — nothing outside it can be inside the glyph.
+    function circlesForGlyph(glyphPolys) {
+      const d = state.circleDiameter;
+      const r = d / 2;
+      const step = d + state.circleGap;
+      const scanStep = 1; // px — fine-grained horizontal search within a row
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const poly of glyphPolys) {
+        for (const p of poly) {
+          if (p.x < minX) minX = p.x;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.y > maxY) maxY = p.y;
+        }
+      }
+      const out = [];
+      for (let cy = minY + r; cy <= maxY - r; cy += step) {
+        let cx = minX + r;
+        while (cx <= maxX - r) {
+          if (circleFullyInside(cx, cy, r, glyphPolys)) {
+            out.push({ x: cx, y: cy, d });
+            cx += step; // circle placed — jump a full width+gap forward
+          } else {
+            cx += scanStep; // no fit here yet — inch forward and retry
+          }
+        }
+      }
+      return out;
+    }
+
     // Drives the physics step + mouse interaction. Set true the moment
     // Expand finishes wiring the bodies; the engine is stepped once per
     // rendered frame from draw() (no runner/timer).
@@ -1645,12 +1835,19 @@
 
         p.fill(state.textColor);
         p.noStroke();
-        const arr = physicsActive ? getBodies() : currentLines;
+        // Physics always draws its rect bodies; otherwise the pattern type
+        // picks the geometry list and the primitive to draw it with.
+        const isCircleMode = state.patternType === 'circle' && !physicsActive;
+        const arr = physicsActive ? getBodies() : (isCircleMode ? currentCircles : currentLines);
         for (const r of arr) {
           p.push();
           p.translate(r.x, r.y);
-          p.rotate(r.angle);
-          p.rect(0, 0, r.w, r.h);
+          if (isCircleMode) {
+            p.ellipse(0, 0, r.d, r.d);
+          } else {
+            p.rotate(r.angle);
+            p.rect(0, 0, r.w, r.h);
+          }
           p.pop();
         }
       };
@@ -1765,11 +1962,19 @@
     const thicknessInput = document.getElementById('thickness');
     const gapInput = document.getElementById('gap');
     const angleInput = document.getElementById('angle');
+    const diameterInput = document.getElementById('diameter');
+    const circleGapInput = document.getElementById('circle-gap');
     const fontSizeVal = document.getElementById('fontSize-val');
     const lineHeightVal = document.getElementById('lineHeight-val');
     const thicknessVal = document.getElementById('thickness-val');
     const gapVal = document.getElementById('gap-val');
     const angleVal = document.getElementById('angle-val');
+    const diameterVal = document.getElementById('diameter-val');
+    const circleGapVal = document.getElementById('circle-gap-val');
+
+    // The two swappable shape-slider blocks (one visible per pattern type).
+    const lineShapeControls = document.getElementById('line-shape-controls');
+    const circleShapeControls = document.getElementById('circle-shape-controls');
 
     // Seed the size / line-height controls and the caret's CSS metrics from
     // TEXT_DEFAULTS, so those numbers live in exactly one place instead of
@@ -1808,13 +2013,21 @@
     function tier1Controls() {
       return [
         fontSizeInput, lineHeightInput, thicknessInput, gapInput, angleInput,
+        diameterInput, circleGapInput,
         resetSettingsBtn, expandBtn,
         ...axesContainer.querySelectorAll('.axis-input'),
         ...document.querySelectorAll('#align-selector .seg-item'),
       ];
     }
+    // Last value passed to setTier1Enabled, so switchPatternType can re-apply
+    // the current tier state after force-disabling expandBtn for circle mode.
+    let tier1Enabled = false;
     function setTier1Enabled(en) {
+      tier1Enabled = en;
       tier1Controls().forEach((c) => (c.disabled = !en));
+      // Circle mode has no physics path yet, so "Go to physics" stays
+      // disabled whatever the tier state says. Must run AFTER the loop.
+      if (state.patternType === 'circle') expandBtn.disabled = true;
       syncNumberDisabled();
     }
     function setTier2Enabled(en) {
@@ -1918,6 +2131,8 @@
     wireNumberInput(thicknessVal, thicknessInput);
     wireNumberInput(gapVal, gapInput);
     wireNumberInput(angleVal, angleInput);
+    wireNumberInput(diameterVal, diameterInput);
+    wireNumberInput(circleGapVal, circleGapInput);
     Object.keys(PHYSICS_DEFAULTS).forEach((key) => {
       wireNumberInput(document.getElementById(`${key}-val`), document.getElementById(key));
     });
@@ -2307,6 +2522,18 @@
       rebuildPattern();
     });
 
+    diameterInput.addEventListener('input', () => {
+      state.circleDiameter = Number(diameterInput.value);
+      diameterVal.value = state.circleDiameter;
+      rebuildPattern();
+    });
+
+    circleGapInput.addEventListener('input', () => {
+      state.circleGap = Number(circleGapInput.value);
+      circleGapVal.value = state.circleGap;
+      rebuildPattern();
+    });
+
     // Text input: never delete already-accepted text on vertical overflow.
     // A fitting value is accepted as-is; an overflowing one (an overflowing
     // keystroke, or a large paste) is truncated to the maximum prefix that
@@ -2398,6 +2625,51 @@
           .forEach((b) => b.classList.toggle('selected', b === btn));
         textInput.style.textAlign = align; // keep the caret with the glyphs
         rebuildPattern();
+      });
+    });
+
+    // ---- Pattern selector (Line / Circle) — cross-step ----
+    // Switching shape swaps which slider block is visible and resets ONLY
+    // that shape's params to SHAPE_DEFAULTS. Text params (font size, line
+    // height, axes) and the typed text are never touched. Diamond is still
+    // a stub: it stays `disabled` and is excluded from the wiring below.
+    function switchPatternType(type) {
+      state.patternType = type;
+
+      if (type === 'line') {
+        state.thickness = SHAPE_DEFAULTS.line.thickness;
+        state.gap = SHAPE_DEFAULTS.line.gap;
+        state.angle = SHAPE_DEFAULTS.line.angle;
+        thicknessInput.value = thicknessVal.value = String(state.thickness);
+        gapInput.value = gapVal.value = String(state.gap);
+        angleInput.value = angleVal.value = String(state.angle);
+        [thicknessInput, gapInput, angleInput].forEach(paintRangeFill);
+      } else {
+        state.circleDiameter = SHAPE_DEFAULTS.circle.diameter;
+        state.circleGap = SHAPE_DEFAULTS.circle.gap;
+        diameterInput.value = diameterVal.value = String(state.circleDiameter);
+        circleGapInput.value = circleGapVal.value = String(state.circleGap);
+        [diameterInput, circleGapInput].forEach(paintRangeFill);
+      }
+
+      document.querySelectorAll('#pattern-selector .seg-item').forEach((b) => {
+        b.classList.toggle('selected', b.getAttribute('aria-label').toLowerCase() === type);
+      });
+      lineShapeControls.hidden = type !== 'line';
+      circleShapeControls.hidden = type === 'line';
+
+      // Re-apply the current tier-1 state: this restores "Go to physics" for
+      // line mode and force-disables it for circle mode (no physics path yet).
+      setTier1Enabled(tier1Enabled);
+      rebuildPattern();
+    }
+
+    document.querySelectorAll('#pattern-selector .seg-item:not([aria-label="Diamond"])').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        const type = btn.getAttribute('aria-label').toLowerCase(); // 'line' | 'circle'
+        if (type === state.patternType) return;
+        switchPatternType(type);
       });
     });
 
