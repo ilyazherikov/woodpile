@@ -1123,7 +1123,7 @@
           <div id="credits-popover" hidden>
             <p>Idea and realization: Ilya Zherikov, coding: Claude Code</p>
             <p>UX/UI: <a href="https://www.linkedin.com/in/bmbl/" target="_blank" rel="noopener">Artyom Rusakov</a></p>
-            <p>Valuable feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
+            <p>Valuablclaudee feedback: <a href="https://www.mishagusev.pro/" target="_blank" rel="noopener">Misha Gusev</a>, <a href="https://www.instagram.com/nikitakanarev/" target="_blank" rel="noopener">Nikita Kanarev</a>, <a href="https://www.instagram.com/mityavilson/" target="_blank" rel="noopener">Mitya Vilson</a></p>
           </div>
         </div>
       </div>
@@ -1348,58 +1348,136 @@
     // =========================================================
 
     // Rendered width of `str` in canvas px at `size`, from the font's own
-    // glyph metrics. Shared by the word-wrap logic and the alignment offset
-    // so both measure identically (same wrap widths -> matching layout).
+    // glyph metrics. Used for the per-line alignment offset (center/right),
+    // so the offset matches the glyphs fontkit actually draws.
     function widthPx(str, size) {
       if (!str) return 0;
       const upm = fontInstance.unitsPerEm || font.unitsPerEm;
       return (fontInstance.layout(str).advanceWidth * size) / upm;
     }
 
-    // Greedy word-wrap the text into lines that fit the available
-    // width, honoring explicit newlines. Returns { lines, lineHeight,
-    // height }. Width is measured with the font's own glyph metrics.
-    // Pure word-wrap at an EXPLICIT font size: returns just the wrapped
-    // lines, depending only on (text, size) and the loaded font. No state
-    // reads, no side effects. Line height does NOT affect wrapping — only
+    // ---- Line breaking: the browser is the single source of truth ----
+    //
+    // The caret lives in the transparent #text-input textarea, which the
+    // BROWSER wraps using the Unicode line-breaking rules: besides spaces
+    // they allow breaks after '-', around '/', '\' and other punctuation,
+    // and Chrome, Firefox and Safari apply them slightly differently. Any
+    // wrapper re-implemented in JS (the old one broke only at spaces) breaks
+    // lines at different places than the textarea, the remaining text shifts,
+    // and the caret drifts away from the drawn glyphs.
+    //
+    // So instead of wrapping on its own, the canvas asks the browser where it
+    // would break the text: a hidden mirror element is styled to wrap exactly
+    // like the textarea, the text is put in it, and the visual lines are read
+    // back from the layout. Canvas and caret then always agree on the lines,
+    // in every browser, by construction.
+
+    // Properties copied from the textarea's COMPUTED style, so future CSS
+    // changes and the browser's own textarea defaults are picked up
+    // automatically. font-size and font-variation-settings are deliberately
+    // NOT copied — see layoutLinesAtSize().
+    const MIRROR_COPIED_PROPS = [
+      'font-family', 'font-weight', 'font-style', 'font-stretch',
+      'font-kerning', 'font-feature-settings', 'font-variant',
+      'letter-spacing', 'word-spacing', 'text-transform', 'text-rendering',
+      'white-space', 'word-break', 'overflow-wrap', 'line-break', 'hyphens',
+      'tab-size',
+    ];
+    // Fixed mirror line height, as a multiple of the font size. It never
+    // affects where lines break; it only keeps line tops well apart.
+    const MIRROR_LINE_HEIGHT = 1.5;
+
+    // One mirror element + Text node, created on first use and reused.
+    let lineMirror = null;
+    let lineMirrorText = null;
+    function getLineMirror() {
+      if (!lineMirror) {
+        lineMirror = document.createElement('div');
+        lineMirror.setAttribute('aria-hidden', 'true');
+        lineMirror.style.cssText =
+          'position: absolute; left: -99999px; top: 0; visibility: hidden;' +
+          ' pointer-events: none; padding: 0; border: 0; margin: 0;' +
+          ' box-sizing: content-box; height: auto;';
+        lineMirrorText = document.createTextNode('');
+        lineMirror.appendChild(lineMirrorText);
+        document.body.appendChild(lineMirror);
+      }
+      return lineMirror;
+    }
+
+    // Split `text` into visual lines at an EXPLICIT font size, exactly where
+    // the textarea would break it (see above). Returns one string per visual
+    // line; explicit '\n' starts a new paragraph (an empty one -> ''), and the
+    // spaces hanging at a soft break are dropped so the canvas alignment
+    // offsets match the textarea. Line height does NOT affect wrapping — only
     // the vertical block height, which callers compute separately.
+    //
+    // The font size comes from the `size` argument and the variation from
+    // `state.axes` at call time (not from the textarea), because the fit
+    // checks probe sizes / axis values the textarea doesn't have yet.
     function layoutLinesAtSize(text, size) {
       const margin = getCanvasPadding();
       const availW = p5Instance.width - 2 * margin;
+
+      const mirror = getLineMirror();
+      const cs = getComputedStyle(textInput);
+      for (const prop of MIRROR_COPIED_PROPS) {
+        mirror.style.setProperty(prop, cs.getPropertyValue(prop));
+      }
+      mirror.style.width = availW + 'px';
+      mirror.style.fontSize = size + 'px';
+      mirror.style.lineHeight = String(MIRROR_LINE_HEIGHT);
+      // Same format as applyVariationCSS().
+      mirror.style.fontVariationSettings = Object.entries(state.axes)
+        .map(([t, v]) => `"${t}" ${v}`).join(', ');
+
+      const range = document.createRange();
+      const halfLine = (size * MIRROR_LINE_HEIGHT) / 2;
       const out = [];
 
       for (const para of text.split('\n')) {
         if (para.length === 0) { out.push(''); continue; }
-        const words = para.split(' ');
-        let cur = '';
-        for (const word of words) {
-          // A word too wide to fit on its own line is broken character
-          // by character, mirroring the textarea's word-break: break-word
-          // so the caret and the rendered glyphs stay in sync.
-          if (widthPx(word, size) > availW) {
-            if (cur !== '') { out.push(cur); cur = ''; }
-            let chunk = '';
-            for (const ch of word) {
-              if (chunk !== '' && widthPx(chunk + ch, size) > availW) {
-                out.push(chunk);
-                chunk = ch;
-              } else {
-                chunk += ch;
-              }
-            }
-            cur = chunk; // partial remainder keeps accumulating words
-            continue;
-          }
-          const test = cur === '' ? word : cur + ' ' + word;
-          if (cur !== '' && widthPx(test, size) > availW) {
-            out.push(cur);
-            cur = word;
-          } else {
-            cur = test;
-          }
+        lineMirrorText.data = para;
+
+        // UTF-16 start offset of every code point (plus the end), so a
+        // surrogate pair (emoji etc.) is always measured — and split — whole.
+        const starts = [];
+        for (let i = 0; i < para.length; ) {
+          starts.push(i);
+          const c = para.charCodeAt(i);
+          i += (c >= 0xd800 && c <= 0xdbff && i + 1 < para.length) ? 2 : 1;
         }
-        out.push(cur);
+        const n = starts.length;
+        starts.push(para.length);
+
+        // Top of the line box holding code point k.
+        const topAt = (k) => {
+          range.setStart(lineMirrorText, starts[k]);
+          range.setEnd(lineMirrorText, starts[k + 1]);
+          const rects = range.getClientRects();
+          return rects.length ? rects[0].top : range.getBoundingClientRect().top;
+        };
+
+        // Line tops are non-decreasing with the index, so the end of each
+        // line is binary-searched: O(lines x log n) rect lookups.
+        let k = 0;
+        while (k < n) {
+          const top0 = topAt(k);
+          let lo = k, hi = n - 1;          // invariant: lo is on this line
+          while (lo < hi) {
+            const mid = (lo + hi + 1) >> 1;
+            if (Math.abs(topAt(mid) - top0) < halfLine) lo = mid;
+            else hi = mid - 1;
+          }
+          let line = para.slice(starts[k], starts[lo + 1]);
+          // Spaces at a soft break hang at the end of the line in pre-wrap;
+          // drop them (never on the paragraph's last line, never leading).
+          if (lo + 1 < n) line = line.replace(/ +$/, '');
+          out.push(line);
+          k = lo + 1;
+        }
       }
+      lineMirrorText.data = '';
       return out;
     }
 
@@ -1975,6 +2053,16 @@
         fontError.hidden = true;
 
         injectFontFace(file);
+        // The browser loads the @font-face lazily. Wait until the NEW face is
+        // actually loaded, so the first layout (textarea and the line-break
+        // mirror) wraps with the real font, not the fallback. Reading
+        // offsetHeight first flushes styles so document.fonts already sees
+        // the replaced rule. On failure just carry on: the layout falls back
+        // gracefully and the next rebuild picks the font up.
+        try {
+          void document.documentElement.offsetHeight;
+          await document.fonts.load(`${state.fontSize}px "UploadedFont"`);
+        } catch (err) { /* see above */ }
 
         // First load: move the button off the canvas overlay into the left
         // panel (below the logo) and hide the overlay. Idempotent on reload.
