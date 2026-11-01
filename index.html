@@ -12,7 +12,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 
   <!-- Coloris colour picker (background + text fields) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.css"
+        integrity="sha384-DY3umZptOgjUNshBFbvu1+3RVFPoD1/CgGcc1yyJ77/aFOJ7jtN4BORnz/D/xF0n"
+        crossorigin="anonymous"/>
 
   <!-- ====================== Styles ====================== -->
   <style>
@@ -123,13 +125,10 @@
       --seg-selected-bg: #148bfd;
       --seg-selected-contents: #ffffff;
       --seg-default-contents: #000c14;
-      --seg-disabled-bg: #f5f5f5;
-      --seg-disabled-contents: #707070;
       --seg-selected-bg-hover: #0882f7;
       --seg-default-bg-hover: #ebf5fe;
       --radius-segmented: 8px;
-      /* common settings block spacing */
-      --common-settings-margin: 16px;
+      /* gap between the two colour input columns */
       --input-row-margin: 8px;
     }
 
@@ -430,16 +429,15 @@
     .num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .num-input { -moz-appearance: textfield; appearance: textfield; }
 
-    /* ===== Common settings block (pattern selector + colour inputs) =====
-       Sits between the upload control and Step 1. Two rows, 16px apart. */
+    /* ===== Common settings block (colour inputs) =====
+       Sits between the upload control and Step 1. */
     #common-settings {
       display: flex;
       flex-direction: column;
-      gap: var(--common-settings-margin);
       margin-bottom: var(--blocks-spacing);
     }
 
-    /* ---- Segmented control (shared: pattern selector + alignment) ---- */
+    /* ---- Segmented control (used by the alignment selector) ---- */
     .segmented-control {
       display: flex;
       align-items: center;
@@ -483,24 +481,12 @@
       background: var(--seg-selected-bg);
       color: var(--seg-selected-contents);
     }
-    /* Hover background for enabled segments (align selector). The disabled
-       pattern selector never triggers these — kept for consistency/future. */
+    /* Hover backgrounds for enabled segments (align selector). */
     .seg-item:not(.selected):not(:disabled):hover { background: var(--seg-default-bg-hover); }
     .seg-item.selected:not(:disabled):hover { background: var(--seg-selected-bg-hover); }
     /* Suppress the divider on either edge of a selected segment. */
     .seg-item.selected::before,
     .seg-item.selected + .seg-item::before { display: none; }
-    /* Disabled segmented control (the pattern selector is a disabled stub
-       for now; selection + wiring land in a later step). */
-    .segmented-control[aria-disabled="true"] { background: var(--seg-disabled-bg); }
-    .segmented-control[aria-disabled="true"] .seg-item {
-      color: var(--seg-disabled-contents);
-      cursor: default;
-    }
-    .segmented-control[aria-disabled="true"] .seg-item.selected {
-      background: var(--seg-selected-bg);
-      color: var(--seg-selected-contents);
-    }
     /* Alignment selector shares the card's row rhythm with the sliders. */
     #align-selector { margin-bottom: var(--card-row-margin); }
 
@@ -929,24 +915,9 @@
       <!-- ===== Common settings =====
            Shared across both steps. The colour inputs are live and are NOT
            tier-specific: they enable as soon as a font loads and stay
-           enabled on Step 1 and Step 2 alike. The pattern selector is still
-           a disabled stub (see Row A). -->
+           enabled on Step 1 and Step 2 alike. -->
       <div id="common-settings">
-        <!-- Row A: pattern selector. STUB — permanently disabled; the shape
-             options and their selection wiring are not implemented yet. -->
-        <div class="segmented-control" id="pattern-selector" aria-disabled="true">
-          <button class="seg-item selected" disabled aria-label="Line">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="10" width="14" height="4" rx="1"/></svg>
-          </button>
-          <button class="seg-item" disabled aria-label="Circle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/></svg>
-          </button>
-          <button class="seg-item" disabled aria-label="Diamond">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="7.76" y="7.76" width="8.49" height="8.49" rx="1" transform="rotate(45 12 12)"/></svg>
-          </button>
-        </div>
-
-        <!-- Row B: colour settings (Background + Text). Live: typing a hex
+        <!-- Colour settings (Background + Text). Live: typing a hex
              or picking in Coloris recolours the canvas immediately, on both
              steps. data-coloris binds the picker to each field. -->
         <div class="color-settings">
@@ -1187,7 +1158,9 @@
   <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"
           integrity="sha384-OqQP3UcU7efkEYDRjGmQou2uEvzGFGRtwdYXTjnupeB9cWogSgQ4BOhyklFBYbBR"
           crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@v0.25.0/dist/coloris.min.js"
+          integrity="sha384-olpkBKjEFqOOAAUzqL1y4xnKDCVmmXNaoRDWmHnRTutomMnUySX9hqDgVQVcvMdc"
+          crossorigin="anonymous"></script>
 
   <!-- ====================== App (ES module) ====================== -->
   <script type="module">
@@ -1203,8 +1176,9 @@
     } from './physics.js';
 
     // fontkit (ESM, browser-ready): parses fonts, shapes text, and —
-    // crucially — produces variation-applied glyph outlines.
-    import * as fontkitNS from 'https://esm.sh/fontkit@2.0.4';
+    // crucially — produces variation-applied glyph outlines. Vendored as a
+    // self-contained bundle (see vendor/LICENSES.md), so no CDN is involved.
+    import * as fontkitNS from './vendor/fontkit.mjs';
     const fontkit = fontkitNS.default || fontkitNS;
 
     // ---------------- Constants ----------------
@@ -1694,10 +1668,13 @@
 
     // =========================================================
     // Undo (Cmd/Ctrl+Z) / Redo (Cmd/Ctrl+Shift+Z) for drag actions.
+    // Matches the physical key via e.code ('KeyZ'), not e.key, so it works
+    // on non-Latin layouts (e.key is 'я' on Russian) and never throws on
+    // synthetic keydowns (e.g. autofill) that carry no e.key.
     // =========================================================
     window.addEventListener('keydown', (e) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key.toLowerCase() !== 'z') return;
+      if (!mod || e.code !== 'KeyZ') return;
       if (!physicsActive) return;
 
       if (e.shiftKey) {
@@ -2078,6 +2055,63 @@
     // =========================================================
     // Variable-font axis sliders
     // =========================================================
+
+    // Slider step for an axis: fine steps for narrow ranges. Shared by the
+    // slider markup and clampAxis() so the clamp probes the same grid.
+    function axisStep(ax) {
+      return (ax.max - ax.min) < 10 ? 0.1 : 1;
+    }
+
+    // Would the text still fit vertically with axis `tag` at `value`?
+    // Probes by temporarily applying the value to state + fontInstance
+    // (textFits measures with the current instance), and always restores
+    // both before returning.
+    function axisFits(tag, value) {
+      const prev = state.axes[tag];
+      state.axes[tag] = value;
+      try {
+        updateFontInstance();
+        return textFits(state.fontSize, state.lineHeightPct);
+      } finally {
+        state.axes[tag] = prev;
+        updateFontInstance();
+      }
+    }
+
+    // Same rule as the size / line-height clamps: moving an axis must never
+    // push text off the canvas. Returns `requested` if it fits; otherwise
+    // the fitting value on the slider's step grid closest to `requested`,
+    // binary-searched from the current value (known to fit) towards it.
+    // `best` only moves on a fitting probe, so the result always fits even
+    // for a non-monotonic axis. Moves that fit (e.g. narrower) pass as-is.
+    function clampAxis(tag, requested) {
+      const current = state.axes[tag];
+      if (requested === current || axisFits(tag, requested)) return requested;
+
+      const ax = font.variationAxes[tag];
+      const step = axisStep(ax);
+      const decimals = step < 1 ? 1 : 0;
+      const eps = 1e-9;
+      const dir = requested > current ? 1 : -1;
+      // Grid points strictly between current and requested, as indices j
+      // of min + j*step, walked from the current side.
+      const posCur = (current - ax.min) / step;
+      const posReq = (requested - ax.min) / step;
+      const jStart = dir > 0 ? Math.floor(posCur + eps) + 1 : Math.ceil(posCur - eps) - 1;
+      const jEnd = dir > 0 ? Math.ceil(posReq - eps) - 1 : Math.floor(posReq + eps) + 1;
+      const count = (jEnd - jStart) * dir + 1;
+      const valueAt = (i) => Number((ax.min + (jStart + dir * i) * step).toFixed(decimals));
+
+      let lo = 0, hi = count - 1, best = current;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const v = valueAt(mid);
+        if (axisFits(tag, v)) { best = v; lo = mid + 1; }
+        else { hi = mid - 1; }
+      }
+      return best;
+    }
+
     function buildAxisSliders(f) {
       axesContainer.innerHTML = '';
       state.axes = {};
@@ -2097,7 +2131,7 @@
         const min = ax.min;
         const max = ax.max;
         const def = ax.default;
-        const step = (max - min) < 10 ? 0.1 : 1;
+        const step = axisStep(ax);
         state.axes[tag] = def;
 
         const div = document.createElement('div');
@@ -2136,8 +2170,11 @@
         paintRangeFill(input); // initial accent fill for the new slider
 
         input.addEventListener('input', () => {
-          const v = Number(input.value);
+          // Clamp first so a widening move stops at the last value that
+          // still fits; the slider and number field snap back visibly.
+          const v = clampAxis(tag, Number(input.value));
           state.axes[tag] = v;
+          input.value = v;
           numEl.value = v;
           paintRangeFill(input);
           updateFontInstance();
@@ -2165,17 +2202,22 @@
       textInput.style.fontVariationSettings = parts.join(', ');
     }
 
-    // Reset every variable-font axis slider (and its number field) back to
+    // Reset every variable-font axis slider (and its number field) towards
     // the font's default, then rebuild the variation instance + caret CSS.
+    // Each default goes through clampAxis(), one axis at a time (each clamp
+    // sees the axes already reset), so a reset never pushes text off the
+    // canvas: an axis whose default doesn't fit stops at the closest value
+    // that does — the same way Reset treats font size and line height.
     // No-op for static fonts.
     function resetAxesToDefaults() {
       if (!font || !font.variationAxes) return;
       for (const [tag, ax] of Object.entries(font.variationAxes)) {
-        state.axes[tag] = ax.default;
+        const v = clampAxis(tag, ax.default);
+        state.axes[tag] = v;
         const slider = document.getElementById(`axis-${tag}`);
         const numEl = document.getElementById(`axis-${tag}-val`);
-        if (slider) { slider.value = ax.default; paintRangeFill(slider); }
-        if (numEl) numEl.value = ax.default;
+        if (slider) { slider.value = v; paintRangeFill(slider); }
+        if (numEl) numEl.value = v;
       }
       updateFontInstance();
       applyVariationCSS();
@@ -2608,8 +2650,7 @@
 
     // Initial state: Step 1 expanded, Step 2 collapsed inert. Nothing is
     // interactive until a font loads — only the Upload button + drag-drop
-    // work in the empty state. (The pattern selector stays permanently
-    // disabled via its markup regardless.)
+    // work in the empty state.
     showStep(1);
     setTier1Enabled(false);
     setTier2Enabled(false);
