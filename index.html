@@ -114,12 +114,7 @@
       /* empty state */
       --empty-text: rgba(0, 0, 0, 0.5);   /* caption + drop hint text */
       --empty-state-margin: 24px;         /* caption -> button */
-      --empty-state-margin-button: 8px;   /* button -> drop hint */
-      /* combined button paddings */
-      --btn-combined-pad-l: 16px;
-      --btn-combined-pad-r: 12px;
-      --btn-combined-pad-v: 12px;
-      --btn-combined-divider-pad-l: 4px;
+      --empty-state-margin-button: 16px;  /* picker -> drop hint */
       /* segmented control */
       --seg-default-bg: #ffffff;
       --seg-selected-bg: #148bfd;
@@ -703,8 +698,8 @@
       color: var(--empty-text);
       margin-bottom: var(--empty-state-margin);
     }
-    #empty-state #upload-btn {
-      width: 264px;
+    #empty-state .font-picker {
+      width: 308px;
       margin-bottom: var(--empty-state-margin-button);
       pointer-events: auto;
     }
@@ -723,34 +718,293 @@
       outline-offset: -12px;
     }
 
-    /* Upload/reload button: a "combined button" — centered label on the
-       left, an icon on the right, separated by a vertical divider. */
-    #upload-btn {
+    /* ===== Font picker =====
+       One search field (Google Fonts) with the upload action tucked into its
+       right edge: icon-only at rest, expanding into an "Upload" pill on
+       hover / keyboard focus. The same element sits on the canvas overlay in
+       the empty state and moves to the top of the sidebar once a font loads. */
+    .font-picker {
+      --font-inset: 16px;                /* left edge shared by every label in the picker */
+      width: 100%;
+    }
+    /* Positioning context for the spinner, upload button and dropdown, so a
+       notice below the field can't shift them. */
+    .font-field { position: relative; }
+    .font-search {
+      display: block;
+      width: 100%;
+      height: 44px;
+      padding: 0 52px 0 var(--font-inset); /* right side clears the upload button */
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-input);
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 20px;
+      color: var(--input-text);
+      text-overflow: ellipsis;
+      transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+    .font-search::placeholder { color: #000c1466; font-weight: 400; opacity: 1; }
+    .font-search:hover {
+      border-color: var(--input-border-hover);
+      background: var(--input-bg-hover);
+    }
+    .font-search:focus {
+      border-color: var(--input-border-active);
+      background: var(--input-bg-active);
+      outline: none;
+    }
+    .font-picker.has-error .font-search { border-color: #c0392b; }
+
+    /* Shown under the field when Google Fonts can't be reached. */
+    .font-notice {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 12px;
+      text-align: left;
+    }
+    /* Error state: heading, subcaption (the app's 12/16 caption style), then the button. */
+    .font-error-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 20px;
+      color: var(--text-main);
+    }
+    .font-error-detail {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      color: var(--empty-text);
+    }
+    .font-notice .font-error-text { padding: 0 calc(var(--font-inset) + 1px); }   /* +1px: the field's border */
+    .font-error { padding-top: 18px; padding-bottom: 18px; }
+    .font-error .font-note-action { margin-top: 16px; }
+    .font-notice[hidden] { display: none; }
+    /* The .action button component, without its stacked-form bottom margin. */
+    .font-notice-retry { margin: 0; }
+
+    .font-upload {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      bottom: 6px;
       display: flex;
       align-items: center;
-      padding: var(--btn-combined-pad-v) var(--btn-combined-pad-r)
-               var(--btn-combined-pad-v) var(--btn-combined-pad-l); /* 12/12/12/16 */
-      gap: 0;
+      padding: 0 7px;
+      border: 0;
+      border-radius: var(--radius-input);
+      background: transparent;
+      color: var(--text-main);
+      font-family: inherit;
+      cursor: pointer;
+      transition: background-color 0.12s ease, color 0.12s ease;
     }
-    #upload-btn .btn-label {
-      flex: 1 1 auto;
-      min-width: 0;               /* allow shrinking for ellipsis */
-      text-align: center;         /* centered in the space left of the divider */
-      white-space: nowrap;
+    .font-upload svg { flex: 0 0 auto; width: 18px; height: 18px; }
+    .font-upload-label {
+      max-width: 0;
+      margin-left: 0;
+      opacity: 0;
       overflow: hidden;
-      text-overflow: ellipsis;    /* long font names truncate with … */
+      white-space: nowrap;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 18px;
+      transition: max-width 0.16s ease, margin 0.16s ease, opacity 0.12s ease;
     }
-    #upload-btn .btn-icon {
-      flex: 0 0 auto;
+    .font-upload:hover,
+    .font-upload:focus-visible {
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+    }
+    .font-upload:hover .font-upload-label,
+    .font-upload:focus-visible .font-upload-label {
+      max-width: 60px;
+      margin: 0 3px 0 6px;
+      opacity: 1;
+    }
+    .font-upload:active {
+      background: var(--btn-primary-bg-pressed);
+      color: var(--btn-primary-text-pressed);
+    }
+    .font-upload:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Download-in-progress spinner, just left of the upload button. */
+    .font-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      right: 48px;
+      width: 16px;
+      height: 16px;
+      margin-top: -8px;
+      border: 2px solid var(--input-border-active);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: font-spin 0.7s linear infinite;
+    }
+    .font-picker.is-loading .font-spinner { display: block; }
+    .font-picker.is-loading .font-search { color: var(--text-main-disabled); }
+    @keyframes font-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .font-spinner { animation-duration: 2.4s; }
+    }
+
+    /* Results dropdown: filter chips on top, scrolling listbox below. Every
+       label in it starts at --font-inset (+1px border), the same x as the
+       text typed in the field. */
+    .font-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 30;
+      overflow: hidden;
+      background: #ffffff;
+      border: 1px solid var(--input-border-active);
+      border-radius: var(--radius-input);   /* same corners as the field above it */
+      box-shadow: 0 8px 24px var(--shadow-color);
+      text-align: left;                  /* #empty-state centres its text */
+    }
+    .font-dropdown[hidden] { display: none; }
+
+    .font-filters {
       display: flex;
-      align-items: center;
-      /* 1px full-height divider on the LEFT of the icon block */
-      border-left: 1px solid var(--btn-primary-divider);
-      padding-left: var(--btn-combined-pad-r);           /* 12px divider <-> icon, matches button right padding */
-      margin-left: var(--btn-combined-divider-pad-l);    /* 4px label <-> divider */
-      height: 24px;               /* divider height per Figma */
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 6px 8px var(--font-inset);   /* chevron hugs the right edge */
+      border-bottom: 1px solid var(--input-border);
     }
-    #upload-btn .btn-icon svg { width: 18px; height: 18px; }
+    /* Collapsed: just the first line of chips (selected ones are sorted to
+       the front, so active filters are always visible). Expanded: all of them. */
+    .font-filter-row {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      max-height: 28px;                  /* JS sets the open height so it can animate */
+      overflow: hidden;
+      transition: max-height 0.18s ease;
+    }
+    .font-filters-toggle {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-input);
+      background: transparent;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+    .font-filters-toggle:hover { background: var(--seg-default-bg-hover); }
+    .font-filters-toggle svg { width: 16px; height: 16px; transition: transform 0.18s ease; }
+    .font-filters.is-expanded .font-filters-toggle svg { transform: rotate(180deg); }
+    @media (prefers-reduced-motion: reduce) {
+      .font-filter-row, .font-filters-toggle svg { transition: none; }
+    }
+    .font-chip {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--input-border);
+      border-radius: var(--radius-input);
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    }
+    .font-chip:hover { background: var(--seg-default-bg-hover); }
+    .font-chip[aria-pressed="true"] {
+      background: var(--btn-primary-bg);
+      border-color: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+    }
+
+    .font-results {
+      max-height: min(340px, 55vh);
+      overflow-y: auto;
+      margin: 0;
+      padding: 4px 0;
+      list-style: none;
+    }
+    .font-option {
+      margin: 0;
+      padding: 8px var(--font-inset);    /* the shared inset; highlight runs edge to edge */
+      border-radius: 0;
+      cursor: pointer;
+      color: var(--text-main);
+    }
+    .font-option[aria-selected="true"] { background: var(--seg-default-bg-hover); }
+    .font-option-main {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .font-option-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 18px;
+      line-height: 24px;
+    }
+    .font-option-tags { display: flex; flex: 0 0 auto; gap: 8px; }
+    .font-option-tag {
+      flex: 0 0 auto;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 16px;
+      color: #5aa6f2;
+    }
+    /* Scripts the family covers, left-aligned under its name. */
+    .font-option-meta {
+      display: block;
+      margin-top: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 16px;
+      color: var(--empty-text);
+    }
+    .font-group-label,
+    .font-empty {
+      padding: 8px var(--font-inset) 4px;
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 16px;
+      color: var(--empty-text);
+      cursor: default;
+    }
+    .font-empty { padding-bottom: 8px; }
+    /* Group headings ("Uploaded", "Popular", ...) stay pinned at the top of
+       the list while their group scrolls; the next heading pushes them off. */
+    .font-group-label {
+      position: sticky;
+      top: -4px;                         /* cancels the list's 4px top padding, so rows can't show above it */
+      z-index: 1;
+      background: #ffffff;
+    }
+    .font-note-action { margin: 8px 0 0; }
+
+    /* In the sidebar the picker sits above the colour inputs. */
+    #upload-control .font-picker { margin-bottom: var(--card-row-margin); }
 
     /* Social links, now in the sidebar footer. */
     #social-icons {
@@ -1134,17 +1388,43 @@
       <textarea id="text-input" spellcheck="false" autocomplete="off" hidden aria-label="Text input"></textarea>
 
       <!-- Empty state: shown only in the no-font state. One centred block
-           with the caption, the Upload button (moved into the panel once a
+           with the caption, the font picker (moved into the panel once a
            font loads), and the drag-and-drop hint. Hidden once a font is
            loaded. -->
       <div id="empty-state">
         <div id="empty-caption">Wait for the tea, the fish aren't running!</div>
-        <button class="action" id="upload-btn">
-          <span class="btn-label">Upload font</span>
-          <span class="btn-icon">
-            <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
-          </span>
-        </button>
+        <div class="font-picker" id="font-picker">
+          <div class="font-field">
+            <input type="text" id="font-search" class="font-search" role="combobox"
+                   aria-label="Search Google Fonts" aria-autocomplete="list"
+                   aria-expanded="false" aria-controls="font-results"
+                   placeholder="Search Google Fonts"
+                   autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <span class="font-spinner" aria-hidden="true"></span>
+            <button type="button" id="upload-btn" class="font-upload"
+                    aria-label="Upload a font file" title="Upload a font file (.otf, .ttf)">
+              <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>
+              <span class="font-upload-label">Upload</span>
+            </button>
+            <div class="font-dropdown" id="font-dropdown" hidden>
+              <div class="font-filters" id="font-filters" role="group" aria-label="Filter fonts">
+                <div class="font-filter-row" id="font-filter-row"><button type="button" class="font-chip" data-group="scripts" data-value="latin" aria-pressed="false" tabindex="-1">Latin</button><button type="button" class="font-chip" data-group="scripts" data-value="cyrillic" aria-pressed="false" tabindex="-1">Cyrillic</button><button type="button" class="font-chip" data-group="variable" aria-pressed="false" tabindex="-1">Variable</button><button type="button" class="font-chip" data-group="categories" data-value="sans-serif" aria-pressed="false" tabindex="-1">Sans</button><button type="button" class="font-chip" data-group="categories" data-value="serif" aria-pressed="false" tabindex="-1">Serif</button><button type="button" class="font-chip" data-group="categories" data-value="monospace" aria-pressed="false" tabindex="-1">Mono</button><button type="button" class="font-chip" data-group="categories" data-value="display" aria-pressed="false" tabindex="-1">Display</button><button type="button" class="font-chip" data-group="categories" data-value="handwriting" aria-pressed="false" tabindex="-1">Handwriting</button></div>
+                <button type="button" class="font-filters-toggle" id="font-filters-toggle" tabindex="-1"
+                        aria-expanded="false" aria-label="Show all filters" title="Show all filters">
+                  <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+                </button>
+              </div>
+              <ul class="font-results" id="font-results" role="listbox" aria-label="Google Fonts"></ul>
+            </div>
+          </div>
+          <div class="font-notice" id="font-notice" role="alert" hidden>
+            <div class="font-error-text">
+              <div class="font-error-title" id="font-notice-title"></div>
+              <div class="font-error-detail" id="font-notice-detail"></div>
+            </div>
+            <button type="button" class="action secondary font-notice-retry" id="font-retry">Try again</button>
+          </div>
+        </div>
         <div id="drop-hint">...or drag and drop a font file here (.otf or .ttf)</div>
       </div>
 
@@ -1754,6 +2034,7 @@
       const mod = e.metaKey || e.ctrlKey;
       if (!mod || e.code !== 'KeyZ') return;
       if (!physicsActive) return;
+      if (e.target?.id === 'font-search') return; // keep the field's own text undo
 
       if (e.shiftKey) {
         // Redo
@@ -1982,32 +2263,16 @@
     // =========================================================
     uploadBtn.addEventListener('click', () => fontInput.click());
 
-    // Combined-button icons (Phosphor, viewBox 0 0 256 256): upload-simple
-    // for the empty state, arrows-clockwise for the loaded/reload state.
-    const ICON_UPLOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M74.34,85.66a8,8,0,0,1,0-11.32l48-48a8,8,0,0,1,11.32,0l48,48a8,8,0,0,1-11.32,11.32L136,51.31V152a8,8,0,0,1-16,0V51.31L85.66,85.66A8,8,0,0,1,74.34,85.66ZM216,144a8,8,0,0,0-8,8v56H48V152a8,8,0,0,0-16,0v56a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V152A8,8,0,0,0,216,144Z"/></svg>';
-    const ICON_RELOAD = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1,0-16h28.69L182.06,73.37a79.56,79.56,0,0,0-56.13-23.43h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27a96,96,0,0,1,135,.79L208,76.69V48a8,8,0,0,1,16,0ZM186.41,183.29a80,80,0,0,1-112.47-.66L59.31,168H88a8,8,0,0,0,0-16H40a8,8,0,0,0-8,8v48a8,8,0,0,0,16,0V179.31l14.63,14.63A95.43,95.43,0,0,0,130,222.06h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></svg>';
-
-    // Show the loaded font name on the button. Only the .btn-label span text
-    // changes; the divider + icon block to its right are left intact.
-    function setUploadLabel(name) {
-      uploadBtn.querySelector('.btn-label').textContent = name;
-    }
-
-    // Swap the combined-button's icon between states without disturbing the
-    // divider or label. 'reload' = loaded (arrows-clockwise); anything else =
-    // empty (upload-simple).
-    function setUploadIcon(kind) {
-      uploadBtn.querySelector('.btn-icon').innerHTML =
-        kind === 'reload' ? ICON_RELOAD : ICON_UPLOAD;
-    }
-
     // Shared font-loading path for both the file picker and drag-and-drop.
-    async function loadFontFile(file) {
-      if (!file) return;
+    // Resolves true once the font is applied, false if it was rejected (the
+    // previously loaded font, if any, is left untouched). `label` overrides
+    // the name shown in the picker (used for Google Fonts picks).
+    async function loadFontFile(file, { label } = {}) {
+      if (!file) return false;
       const name = file.name.toLowerCase();
       if (!name.endsWith('.otf') && !name.endsWith('.ttf')) {
         showFontError();
-        return;
+        return false;
       }
       // Parse first, commit after: if the new file is corrupt, the
       // previously loaded font (if any) stays fully intact — state, UI,
@@ -2036,7 +2301,7 @@
         }
       } catch (err) {
         showFontError();
-        return;
+        return false;
       }
 
       // If physics is running (we're on Step 2), roll the app back to Step 1
@@ -2064,12 +2329,12 @@
           await document.fonts.load(`${state.fontSize}px "UploadedFont"`);
         } catch (err) { /* see above */ }
 
-        // First load: move the button off the canvas overlay into the left
+        // First load: move the picker off the canvas overlay into the left
         // panel (below the logo) and hide the overlay. Idempotent on reload.
-        uploadControl.insertBefore(uploadBtn, fontInput);
+        uploadControl.insertBefore(fontPicker, fontInput);
         uploadOverlay.style.display = 'none';
-        setUploadLabel(fontDisplayName(parsed) || file.name);
-        setUploadIcon('reload'); // loaded state: clicking now reloads the font
+        setFontLabel(label || fontDisplayName(parsed) || file.name);
+        if (!label) registerLocalFont(file, parsed, committedLabel);
 
         buildAxisSliders(parsed);
         updateFontInstance();
@@ -2083,16 +2348,672 @@
         applyVariationCSS();
         textInput.focus();
         rebuildPattern();
+        return true;
       } catch (err) {
         showFontError();
+        return false;
       }
     }
 
     fontInput.addEventListener('change', async (e) => {
+      cancelPendingPick();
       await loadFontFile(e.target.files[0]);
       // Allow re-uploading the same file later.
       fontInput.value = '';
     });
+
+    // =========================================================
+    // Font picker: Google Fonts search + upload
+    // =========================================================
+    // The family list is fetched live from the Google Fonts Developer API:
+    // every family with its category, scripts (subsets), whether it is
+    // variable, and a direct file URL, in popularity order. Picking a result
+    // downloads that TTF from fonts.gstatic.com and feeds it through
+    // loadFontFile() — the same path a manual upload takes — so parsing,
+    // validation and the axis sliders behave identically for both.
+    // There is deliberately no offline fallback: when Google can't be
+    // reached the picker says so and offers "Try again".
+    const fontPicker = document.getElementById('font-picker');
+    const fontSearch = document.getElementById('font-search');
+    const fontDropdown = document.getElementById('font-dropdown');
+    const fontResults = document.getElementById('font-results');
+    const fontFilters = document.getElementById('font-filters');
+    const fontNotice = document.getElementById('font-notice');
+    const fontNoticeTitle = document.getElementById('font-notice-title');
+    const fontNoticeDetail = document.getElementById('font-notice-detail');
+
+    const FONTS_API_URL = 'https://www.googleapis.com/webfonts/v1/webfonts';
+    // Browser key for the Web Fonts Developer API. Anyone who opens the page
+    // can read it, so restrict it in Google Cloud (HTTP referrers + this one
+    // API only).
+    const FONTS_API_KEY = 'AIzaSyCeRx3OXm03drGHVpV-0hW-PVqpxLPryz0';
+    // How long to wait for Google to start answering (the body can take longer).
+    const REQUEST_TIMEOUT_MS = 20000;
+    const FONT_PREVIEW_CSS = 'https://fonts.googleapis.com/css2';
+    // Preview faces are renamed with this prefix so a preview of, say, Inter
+    // (a few glyphs only) can never override the UI's own Inter.
+    const FONT_PREVIEW_PREFIX = 'wp-preview ';
+    const MAX_FONT_RESULTS = 60;
+    const MAX_SCRIPT_LABELS = 4;
+
+    let fontIndex = null;        // { rows } once the API answered
+    let fontIndexPromise = null;
+    let committedLabel = '';     // what the field shows when it isn't being edited
+    let searchQuery = '';
+    let shownRows = [];          // rows currently rendered as options
+    let activeIdx = -1;
+    let isOpen = false;
+    let justFocused = false;
+    let pickToken = 0;           // invalidates an in-flight Google download
+    let failedRow = null;        // the pick the "Try again" button repeats
+
+    const normalizeName = (s) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const cssString = (s) => s.replace(/["\\]/g, '\\$&');
+
+    // ---- Talking to Google ----------------------------------------------
+    class GoogleFontsError extends Error {
+      constructor(kind, status) {
+        super(kind);
+        this.kind = kind;        // 'offline' | 'network' | 'http'
+        this.status = status;
+      }
+    }
+    async function fetchGoogle(url) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        if (!res.ok) throw new GoogleFontsError('http', res.status);
+        return res;
+      } catch (err) {
+        if (err instanceof GoogleFontsError) throw err;
+        throw new GoogleFontsError(navigator.onLine === false ? 'offline' : 'network');
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    // A heading plus a one-line explanation, shared by both error spots.
+    function describeFontError(err) {
+      const upload = 'You can still upload your own font file.';
+      if (err?.kind === 'offline') {
+        return { title: 'You’re offline', detail: `Reconnect to use Google Fonts. ${upload}` };
+      }
+      if (err?.kind === 'http') {
+        return { title: 'Google Fonts returned an error', detail: `It answered with status ${err.status}. Try again in a moment. ${upload}` };
+      }
+      return { title: 'Can’t reach Google Fonts', detail: `Check your connection. ${upload}` };
+    }
+
+    // Subsets that name a script. "menu" is only the font-picker preview
+    // subset, and "*-ext" are extra glyph ranges of a script already listed,
+    // so a font counts as Cyrillic only when it has the plain cyrillic set.
+    function scriptsFor(subsets = []) {
+      let slugs = [...new Set(subsets)].filter((s) => s !== 'menu' && !s.endsWith('-ext'));
+      if (!slugs.length) slugs = [...new Set(subsets.filter((s) => s.endsWith('-ext')).map((s) => s.slice(0, -4)))];
+      const rank = (s) => (s === 'latin' ? 0 : s === 'cyrillic' ? 1 : 2);
+      slugs.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+      return slugs.map((slug) => ({
+        slug,
+        label: slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      }));
+    }
+
+    function loadFontIndex() {
+      if (!fontIndexPromise) {
+        const params = new URLSearchParams({
+          key: FONTS_API_KEY,
+          sort: 'popularity',
+          capability: 'VF',            // variable fonts come as one variable file
+          fields: 'items(family,category,subsets,axes,files)',
+        });
+        fontIndexPromise = fetchGoogle(`${FONTS_API_URL}?${params}`)
+          .then((res) => res.json())
+          .then(({ items }) => {
+            const rows = [];
+            for (const f of items || []) {
+              const files = f.files || {};
+              const url = files.regular || Object.values(files)[0];
+              if (!url) continue;
+              const key = normalizeName(f.family);
+              const scripts = scriptsFor(f.subsets);
+              rows.push({
+                name: f.family,
+                key,
+                compact: key.replace(/ /g, ''),
+                url: url.replace(/^http:/, 'https:'),
+                variable: Array.isArray(f.axes) && f.axes.length > 0,
+                category: f.category || '',
+                scripts,
+                scriptSet: new Set(scripts.map((s) => s.slug)),
+              });
+            }
+            if (!rows.length) throw new GoogleFontsError('network');
+            return { rows };
+          })
+          .catch((err) => { fontIndexPromise = null; throw err; });
+      }
+      return fontIndexPromise;
+    }
+
+    // Rank: exact, prefix, word-prefix, all-words-anywhere, ignoring spaces.
+    // Array.sort is stable, so ties keep Google's popularity order.
+    function searchFonts(query, rows) {
+      const q = normalizeName(query);
+      const tokens = q.split(' ');
+      const qc = tokens.join('');
+      const hits = [];
+      for (const row of rows) {
+        let score;
+        if (row.key === q) score = 0;
+        else if (row.compact.startsWith(qc)) score = 1;
+        else if (tokens.every((t) => row.key.includes(t))) {
+          score = row.key.split(' ').some((w) => w.startsWith(tokens[0])) ? 2 : 3;
+        } else if (row.compact.includes(qc)) score = 4;
+        else continue;
+        hits.push({ row, score });
+      }
+      hits.sort((a, b) => a.score - b.score || a.row.name.length - b.row.name.length);
+      return hits.map((h) => h.row);
+    }
+
+    // ---- Fonts uploaded this session ("Local") ----------------------------
+    // Every file uploaded or dropped is remembered in memory (newest first)
+    // so it can be picked again without re-uploading. Nothing is persisted:
+    // a page reload clears the list.
+    const localFonts = [];
+    // A script counts as covered when the font has its basic letters.
+    const SCRIPT_PROBES = [
+      ['latin', [0x41, 0x61]], ['cyrillic', [0x410, 0x430]], ['greek', [0x391, 0x3B1]],
+      ['armenian', [0x531, 0x561]], ['georgian', [0x10D0]], ['hebrew', [0x5D0]],
+      ['arabic', [0x627]], ['devanagari', [0x905]], ['thai', [0xE01]],
+      ['vietnamese', [0x1EA0, 0x1A1]], ['japanese', [0x3042]], ['korean', [0xAC00]],
+    ];
+    function detectScripts(parsed) {
+      const has = (cp) => { try { return parsed.hasGlyphForCodePoint(cp); } catch (err) { return false; } };
+      const found = SCRIPT_PROBES.filter(([, cps]) => cps.every(has)).map(([slug]) => slug);
+      if (has(0x4E00) && !found.includes('japanese') && !found.includes('korean')) found.push('chinese');
+      return found;
+    }
+    function registerLocalFont(file, parsed, name) {
+      const id = `${file.name}|${file.size}|${file.lastModified}`;
+      if (localFonts.some((r) => r.id === id)) return;
+      const key = normalizeName(name);
+      const scripts = scriptsFor(detectScripts(parsed));
+      localFonts.unshift({
+        id, file, name, key,
+        compact: key.replace(/ /g, ''),
+        variable: !!(parsed.variationAxes && Object.keys(parsed.variationAxes).length),
+        category: '',                      // unknown for a file: category chips don't hide it
+        scripts,
+        scriptSet: new Set(scripts.map((s) => s.slug)),
+      });
+    }
+
+    // ---- Filters (remembered between visits) --------------------------------
+    const FILTER_STORAGE_KEY = 'woodpile.fontFilters';
+    const SCRIPT_FILTERS = ['latin', 'cyrillic'];
+    const CATEGORY_FILTERS = ['sans-serif', 'serif', 'monospace', 'display', 'handwriting'];
+    const FILTER_LABELS = {
+      latin: 'Latin', cyrillic: 'Cyrillic',
+      'sans-serif': 'Sans', serif: 'Serif', monospace: 'Mono',
+      display: 'Display', handwriting: 'Handwriting',
+    };
+    // Scripts combine with AND (a font must cover every chosen script);
+    // categories combine with OR (any chosen category).
+    const fontFilter = { scripts: new Set(), categories: new Set(), variable: false };
+
+    function loadFilterState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || 'null');
+        if (!saved || typeof saved !== 'object') return;
+        for (const s of saved.scripts || []) if (SCRIPT_FILTERS.includes(s)) fontFilter.scripts.add(s);
+        for (const c of saved.categories || []) if (CATEGORY_FILTERS.includes(c)) fontFilter.categories.add(c);
+        fontFilter.variable = saved.variable === true;
+      } catch (err) { /* storage blocked or corrupt: start unfiltered */ }
+    }
+    function saveFilterState() {
+      try {
+        localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({
+          scripts: [...fontFilter.scripts],
+          categories: [...fontFilter.categories],
+          variable: fontFilter.variable,
+        }));
+      } catch (err) { /* storage blocked: the filters just won't persist */ }
+    }
+    const filtersActive = () =>
+      fontFilter.scripts.size > 0 || fontFilter.categories.size > 0 || fontFilter.variable;
+    function clearFilters() {
+      fontFilter.scripts.clear();
+      fontFilter.categories.clear();
+      fontFilter.variable = false;
+      saveFilterState();
+      syncFilterChips();
+    }
+    function syncFilterChips() {
+      fontFilters.querySelectorAll('.font-chip').forEach((chip) => {
+        const { group, value } = chip.dataset;
+        const on = group === 'variable' ? fontFilter.variable : fontFilter[group].has(value);
+        chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      orderChips();
+    }
+    const fontFilterRow = document.getElementById('font-filter-row');
+    // Selected chips go first (then the original order), so with the row
+    // collapsed the active filters are always the ones you can see.
+    function orderChips() {
+      const on = (c) => c.getAttribute('aria-pressed') === 'true';
+      [...fontFilterRow.querySelectorAll('.font-chip')]
+        .sort((x, y) => on(y) - on(x) || Number(x.dataset.order) - Number(y.dataset.order))
+        .forEach((c) => fontFilterRow.append(c));
+    }
+    fontFilterRow.querySelectorAll('.font-chip').forEach((c, i) => { c.dataset.order = i; });
+    const fontFiltersToggle = document.getElementById('font-filters-toggle');
+    const CHIP_ROW_COLLAPSED = 28;   // keep in sync with .font-chip height
+    function setFiltersExpanded(open) {
+      fontFilters.classList.toggle('is-expanded', open);
+      fontFilterRow.style.maxHeight = `${open ? fontFilterRow.scrollHeight : CHIP_ROW_COLLAPSED}px`;
+      const label = open ? 'Show fewer filters' : 'Show all filters';
+      fontFiltersToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      fontFiltersToggle.setAttribute('aria-label', label);
+      fontFiltersToggle.title = label;
+    }
+    fontFiltersToggle.addEventListener('click', () => {
+      setFiltersExpanded(!fontFilters.classList.contains('is-expanded'));
+    });
+    // Scrolling the list means you're browsing, so fold the filters away.
+    // (A re-render resets scrollTop to 0, which must not count.)
+    fontResults.addEventListener('scroll', () => {
+      if (fontResults.scrollTop > 0 && fontFilters.classList.contains('is-expanded')) {
+        setFiltersExpanded(false);
+      }
+    }, { passive: true });
+
+    function passesFilters(row) {
+      for (const s of fontFilter.scripts) if (!row.scriptSet.has(s)) return false;
+      if (fontFilter.categories.size && row.category && !fontFilter.categories.has(row.category)) return false;
+      if (fontFilter.variable && !row.variable) return false;
+      return true;
+    }
+    function describeFilters() {
+      const parts = [];
+      if (fontFilter.scripts.size) parts.push([...fontFilter.scripts].map((s) => FILTER_LABELS[s]).join(' + '));
+      if (fontFilter.categories.size) parts.push([...fontFilter.categories].map((c) => FILTER_LABELS[c]).join(' or '));
+      if (fontFilter.variable) parts.push('Variable');
+      return parts.join(', ');
+    }
+
+    // ---- Previews: each option renders in its own typeface -----------
+    // Google's css2 endpoint with &text= serves a tiny subset containing just
+    // the family name's glyphs, so a screenful of previews costs a few KB.
+    const previewRequested = new Set();
+    let previewStyle = null;
+    function loadPreview(name) {
+      if (previewRequested.has(name)) return;
+      previewRequested.add(name);
+      const family = encodeURIComponent(name).replace(/%20/g, '+');
+      const url = `${FONT_PREVIEW_CSS}?family=${family}&text=${encodeURIComponent(name)}&display=swap`;
+      fetch(url)
+        .then((res) => (res.ok ? res.text() : Promise.reject(new Error(`HTTP ${res.status}`))))
+        .then((css) => {
+          if (!previewStyle) {
+            previewStyle = document.createElement('style');
+            previewStyle.id = 'font-previews';
+            document.head.appendChild(previewStyle);
+          }
+          previewStyle.appendChild(document.createTextNode(
+            css.replace(/font-family:\s*'([^']*)'/g, `font-family: '${FONT_PREVIEW_PREFIX}$1'`)
+          ));
+        })
+        .catch(() => { /* no preview: the row just keeps the UI font */ });
+    }
+    // Only fetch previews for rows that actually scroll into view.
+    const previewObserver = new IntersectionObserver((entries) => {
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        loadPreview(en.target.dataset.name);
+        previewObserver.unobserve(en.target);
+      }
+    }, { root: fontResults, rootMargin: '80px' });
+
+    // ---- Dropdown rendering -------------------------------------------
+    function openResults() {
+      isOpen = true;
+      fontDropdown.hidden = false;
+      fontSearch.setAttribute('aria-expanded', 'true');
+    }
+    function closeResults() {
+      isOpen = false;
+      fontDropdown.hidden = true;
+      fontSearch.setAttribute('aria-expanded', 'false');
+      fontSearch.removeAttribute('aria-activedescendant');
+      activeIdx = -1;
+    }
+    // A non-option row. `action` adds a button under the text:
+    // { id: 'retry-list' | 'clear-filters', label }.
+    function makeNote(className, text, action) {
+      const li = document.createElement('li');
+      li.className = className;
+      li.setAttribute('role', 'presentation');
+      li.textContent = text;
+      if (action) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'action secondary font-note-action';
+        btn.dataset.action = action.id;
+        btn.textContent = action.label;
+        li.append(btn);
+      }
+      return li;
+    }
+    // The same heading / subcaption / button block, inside the dropdown.
+    function makeErrorNote({ title, detail }, action) {
+      const li = document.createElement('li');
+      li.className = 'font-empty font-error';
+      li.setAttribute('role', 'presentation');
+      const t = document.createElement('div');
+      t.className = 'font-error-title';
+      t.textContent = title;
+      const d = document.createElement('div');
+      d.className = 'font-error-detail';
+      d.textContent = detail;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'action secondary font-note-action';
+      btn.dataset.action = action.id;
+      btn.textContent = action.label;
+      li.append(t, d, btn);
+      return li;
+    }
+    function showResultsMessage(text, action) {
+      shownRows = [];
+      activeIdx = -1;
+      fontResults.replaceChildren(makeNote('font-empty', text, action));
+      openResults();
+    }
+    function setActive(idx, scroll = true) {
+      const prev = fontResults.querySelector('[aria-selected="true"]');
+      if (prev) prev.removeAttribute('aria-selected');
+      activeIdx = idx;
+      const el = idx >= 0 ? document.getElementById(`font-opt-${idx}`) : null;
+      if (el) {
+        el.setAttribute('aria-selected', 'true');
+        fontSearch.setAttribute('aria-activedescendant', el.id);
+        if (scroll) el.scrollIntoView({ block: 'nearest' });
+      } else {
+        fontSearch.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    function buildOption(row, i) {
+      const li = document.createElement('li');
+      li.className = 'font-option';
+      li.id = `font-opt-${i}`;
+      li.setAttribute('role', 'option');
+      li.dataset.index = i;
+
+      const main = document.createElement('span');
+      main.className = 'font-option-main';
+      const name = document.createElement('span');
+      name.className = 'font-option-name';
+      name.textContent = row.name;
+      if (!row.file) {
+        // Google rows preview in their own typeface; uploaded ones keep the UI font.
+        li.dataset.name = row.name;
+        name.style.fontFamily = `"${FONT_PREVIEW_PREFIX}${cssString(row.name)}", 'Inter', sans-serif`;
+      }
+      main.append(name);
+
+      const tags = [];
+      if (row.variable) tags.push({ text: 'Variable' });
+      else if (row.file) tags.push({ text: 'Static' });
+      if (tags.length) {
+        const wrap = document.createElement('span');
+        wrap.className = 'font-option-tags';
+        for (const t of tags) {
+          const tag = document.createElement('span');
+          tag.className = 'font-option-tag';
+          tag.textContent = t.text;
+          wrap.append(tag);
+        }
+        main.append(wrap);
+      }
+      li.append(main);
+
+      if (row.scripts.length) {
+        const labels = row.scripts.map((s) => s.label);
+        const meta = document.createElement('span');
+        meta.className = 'font-option-meta';
+        meta.textContent = labels.slice(0, MAX_SCRIPT_LABELS).join(' · ') +
+          (labels.length > MAX_SCRIPT_LABELS ? ` +${labels.length - MAX_SCRIPT_LABELS}` : '');
+        meta.title = labels.join(', ');
+        li.append(meta);
+      }
+      return li;
+    }
+    // Uploaded fonts sit under their own heading, ahead of the Google list.
+    function renderUploaded(items, rows) {
+      if (!rows.length) return;
+      items.push(makeNote('font-group-label', 'Uploaded'));
+      renderOptionRows(items, rows);
+    }
+    function renderOptionRows(items, rows) {
+      for (const row of rows) {
+        items.push(buildOption(row, shownRows.length));
+        shownRows.push(row);
+      }
+    }
+    function finishRender(items) {
+      fontResults.replaceChildren(...items);
+      fontResults.scrollTop = 0;
+      fontResults.querySelectorAll('.font-option[data-name]').forEach((li) => previewObserver.observe(li));
+      setActive(shownRows.length ? 0 : -1, false);
+    }
+
+    async function updateResults() {
+      openResults();
+      const typed = () => normalizeName(searchQuery) !== '';
+      // Uploaded fonts always come first, and keep working while the Google
+      // list is loading or unreachable.
+      const currentLocals = () =>
+        (typed() ? searchFonts(searchQuery, localFonts) : localFonts).filter(passesFilters);
+
+      if (!fontIndex) {
+        shownRows = [];
+        const pending = [];
+        renderUploaded(pending, currentLocals());
+        pending.push(makeNote('font-empty', 'Loading fonts…'));
+        finishRender(pending);
+        try {
+          fontIndex = await loadFontIndex();
+        } catch (err) {
+          if (!isOpen) return;
+          shownRows = [];
+          const failed = [];
+          renderUploaded(failed, currentLocals());
+          failed.push(makeErrorNote(describeFontError(err), { id: 'retry-list', label: 'Try again' }));
+          finishRender(failed);
+          return;
+        }
+        if (!isOpen) return; // the field lost focus while the list was loading
+      }
+
+      const isTyped = typed();
+      const locals = currentLocals();
+      const googleMatches = (isTyped ? searchFonts(searchQuery, fontIndex.rows) : fontIndex.rows)
+        .filter(passesFilters);
+
+      shownRows = [];
+      const items = [];
+      renderUploaded(items, locals);
+      if (googleMatches.length) {
+        const heading = !isTyped
+          ? (filtersActive() ? `${googleMatches.length} fonts · ${describeFilters()}` : 'Popular')
+          : (locals.length ? 'Google Fonts' : '');
+        if (heading) items.push(makeNote('font-group-label', heading));
+      }
+      if (!locals.length && !googleMatches.length) {
+        const q = searchQuery.trim();
+        if (filtersActive()) {
+          items.push(makeNote('font-empty',
+            `${q ? `No fonts match “${q}”` : 'No fonts'} with ${describeFilters()}`,
+            { id: 'clear-filters', label: 'Clear filters' }));
+        } else {
+          items.push(makeNote('font-empty', `No fonts match “${q}”`));
+        }
+      }
+      renderOptionRows(items, googleMatches.slice(0, MAX_FONT_RESULTS));
+      if (googleMatches.length > MAX_FONT_RESULTS) {
+        items.push(makeNote('font-empty',
+          `Showing ${MAX_FONT_RESULTS} of ${googleMatches.length}. Keep typing to narrow it down.`));
+      }
+      finishRender(items);
+    }
+
+    // ---- Choosing a font -----------------------------------------------
+    function setFontLabel(name) {
+      committedLabel = name;
+      fontSearch.value = name;
+      fontSearch.title = name;
+    }
+    // The spinner sits in the field while a download runs.
+    function setPickLoading(on) {
+      fontPicker.classList.toggle('is-loading', on);
+      fontSearch.setAttribute('aria-busy', on ? 'true' : 'false');
+    }
+    function cancelPendingPick() {
+      pickToken++;
+      setPickLoading(false);
+    }
+    function showNotice(message, row) {
+      failedRow = row || null;
+      fontNoticeTitle.textContent = message.title;
+      fontNoticeDetail.textContent = message.detail;
+      fontNotice.hidden = false;
+      fontPicker.classList.add('has-error');
+    }
+    function hideNotice() {
+      failedRow = null;
+      fontNotice.hidden = true;
+      fontPicker.classList.remove('has-error');
+    }
+    async function downloadFont(row) {
+      const res = await fetchGoogle(row.url);
+      try {
+        return await res.blob();
+      } catch (err) {
+        throw new GoogleFontsError(navigator.onLine === false ? 'offline' : 'network');
+      }
+    }
+    async function pickLocalFont(row) {
+      closeResults();
+      hideNotice();
+      cancelPendingPick();
+      fontError.hidden = true;
+      const ok = await loadFontFile(row.file, { label: row.name });
+      if (!ok) fontSearch.value = committedLabel;
+    }
+    const pickRow = (row) => (row.file ? pickLocalFont(row) : pickGoogleFont(row));
+    async function pickGoogleFont(row) {
+      closeResults();
+      hideNotice();
+      const token = ++pickToken;
+      fontError.hidden = true;
+      fontSearch.value = row.name;             // show the choice right away
+      setPickLoading(true);
+      try {
+        const blob = await downloadFont(row);
+        if (token !== pickToken) return;       // superseded by a newer pick / upload
+        const file = new File([blob], `${row.name}.ttf`, { type: 'font/ttf' });
+        const ok = await loadFontFile(file, { label: row.name });
+        if (token === pickToken && !ok) fontSearch.value = committedLabel;
+      } catch (err) {
+        if (token === pickToken) {
+          showNotice(describeFontError(err), row);
+          fontSearch.value = committedLabel;
+        }
+      } finally {
+        if (token === pickToken) setPickLoading(false);
+      }
+    }
+
+    // ---- Field + list events ---------------------------------------------
+    // Warm the font list as soon as the pointer gets near the field.
+    fontPicker.addEventListener('pointerenter', () => {
+      loadFontIndex().then((idx) => { fontIndex = idx; }).catch(() => {});
+    }, { once: true });
+
+    fontSearch.addEventListener('focus', () => {
+      searchQuery = '';
+      justFocused = true;
+      hideNotice();
+      fontSearch.select();       // typing replaces the current font's name
+      updateResults();
+    });
+    // A mouse click would otherwise drop the selection again on mouseup.
+    fontSearch.addEventListener('mouseup', (e) => {
+      if (justFocused) { e.preventDefault(); justFocused = false; }
+    });
+    fontSearch.addEventListener('input', () => {
+      searchQuery = fontSearch.value;
+      updateResults();
+    });
+    fontSearch.addEventListener('blur', () => {
+      justFocused = false;
+      closeResults();
+      if (!fontPicker.classList.contains('is-loading')) fontSearch.value = committedLabel;
+    });
+    fontSearch.addEventListener('keydown', (e) => {
+      if (e.isComposing) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!isOpen) { updateResults(); return; }
+        const n = shownRows.length;
+        if (n) setActive((activeIdx + (e.key === 'ArrowDown' ? 1 : -1) + n) % n);
+      } else if (e.key === 'Enter') {
+        if (isOpen && activeIdx >= 0) {
+          e.preventDefault();
+          pickRow(shownRows[activeIdx]);
+        }
+      } else if (e.key === 'Escape') {
+        if (isOpen) { e.preventDefault(); fontSearch.blur(); }
+      }
+    });
+
+    // Keep the field focused while the list or chips are clicked, so blur
+    // doesn't close the dropdown before the click lands.
+    fontDropdown.addEventListener('mousedown', (e) => e.preventDefault());
+    fontResults.addEventListener('click', (e) => {
+      const action = e.target.closest('.font-note-action');
+      if (action) {
+        if (action.dataset.action === 'clear-filters') clearFilters();
+        updateResults();         // for 'retry-list' this refetches the list
+        return;
+      }
+      const li = e.target.closest('.font-option');
+      if (li) pickRow(shownRows[Number(li.dataset.index)]);
+    });
+    fontResults.addEventListener('mousemove', (e) => {
+      const li = e.target.closest('.font-option');
+      if (li && Number(li.dataset.index) !== activeIdx) setActive(Number(li.dataset.index), false);
+    });
+    fontFilters.addEventListener('click', (e) => {
+      const chip = e.target.closest('.font-chip');
+      if (!chip) return;
+      const { group, value } = chip.dataset;
+      if (group === 'variable') fontFilter.variable = !fontFilter.variable;
+      else if (fontFilter[group].has(value)) fontFilter[group].delete(value);
+      else fontFilter[group].add(value);
+      saveFilterState();
+      syncFilterChips();
+      updateResults();
+    });
+    document.getElementById('font-retry').addEventListener('click', () => {
+      const row = failedRow;
+      if (row) pickGoogleFont(row);
+    });
+
+    loadFilterState();
+    syncFilterChips();
 
     // Drag-and-drop onto the canvas, active only in the placeholder state
     // (before any font is loaded). preventDefault always runs first — a
@@ -2115,11 +3036,12 @@
       e.preventDefault();
       canvasHost.classList.remove('drag-active');
       if (font) return;
+      cancelPendingPick();
       loadFontFile(e.dataTransfer.files[0]);
     });
 
-    function showFontError() {
-      fontError.textContent = 'Unsupported format. Please use OTF or TTF.';
+    function showFontError(msg = 'Unsupported format. Please use OTF or TTF.') {
+      fontError.textContent = msg;
       fontError.hidden = false;
     }
 
